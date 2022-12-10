@@ -2,10 +2,10 @@
 #include <iostream>
 #include <sstream>
 #include <jwt-cpp/jwt.h>
-#include <TokenHelper.h>
+#include <FileIoUtils.h>
 
 
-bool TokenHelper::getFileContents(const std::string& filename, std::string& fileContent) {
+bool FileIoUtils::getFileContents(const std::string& filename, std::string& fileContent) {
     std::ifstream file(filename.c_str());
 
     if (!file.is_open()) {
@@ -20,7 +20,7 @@ bool TokenHelper::getFileContents(const std::string& filename, std::string& file
     return true;
 }
 
-bool TokenHelper::dumpToFile(const std::string& filename, const std::string& fileContent) {
+bool FileIoUtils::dumpToFile(const std::string& filename, const std::string& fileContent) {
     std::ofstream file(filename.c_str());
 
     if (!file.is_open()) {

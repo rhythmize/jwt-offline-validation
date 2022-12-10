@@ -2,9 +2,8 @@
 #define _JwtTokenVerificationWithCertificate_H_
 
 
-#include <memory>
 #include <string>
-#include <TokenHelper.h>
+#include <FileIoUtils.h>
 
 class JwtTokenVerificationWithCertificate
 {
@@ -13,7 +12,7 @@ public:
 private:
     std::string private_key_file = "certs/test_signed_cert/private.pem";
     std::string public_cert_file = "certs/test_signed_cert/certificate.crt";
-    std::unique_ptr<TokenHelper> tokenHelper = std::make_unique<TokenHelper>();
+    std::unique_ptr<FileIoUtils> fileIoUtils = std::make_unique<FileIoUtils>();
 };
 
 #endif // _JwtTokenVerificationWithCertificate_H_

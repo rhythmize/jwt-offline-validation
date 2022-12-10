@@ -1,8 +1,9 @@
 #ifndef _JwtTokenSerializer_H_
 #define _JwtTokenSerializer_H_
 
+#include <memory>
 #include <string>
-#include <TokenHelper.h>
+#include <FileIoUtils.h>
 
 class JwtTokenSerializer
 {
@@ -14,7 +15,7 @@ public:
 
 private:
     std::string jwtToken;
-    std::unique_ptr<TokenHelper> tokenHelper = std::make_unique<TokenHelper>();
+    std::unique_ptr<FileIoUtils> fileIoUtils = std::make_unique<FileIoUtils>();
 };
 
 #endif // _JwtTokenSerializer_H_

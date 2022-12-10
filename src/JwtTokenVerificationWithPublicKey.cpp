@@ -1,6 +1,6 @@
 #include <iostream>
-#include <JwtTokenVerificationWithPublicKey.h>
 #include <JwtTokenSerializer.h>
+#include <JwtTokenVerificationWithPublicKey.h>
 
 
 void JwtTokenVerificationWithPublicKey::Run(std::string jwtToken)

@@ -1,6 +1,6 @@
 #include <iostream>
-#include <JwtTokenVerificationWithCertificate.h>
 #include <JwtTokenSerializer.h>
+#include <JwtTokenVerificationWithCertificate.h>
 
 
 void JwtTokenVerificationWithCertificate::Run(std::string jwtToken)

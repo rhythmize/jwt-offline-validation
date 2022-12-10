@@ -4,7 +4,7 @@
 void JwtTokenSerializer::updateToken(const std::string& privateKeyFile) 
 {
     std::string privateKey;
-    if(!tokenHelper->getFileContents(privateKeyFile, privateKey))
+    if(!fileIoUtils->getFileContents(privateKeyFile, privateKey))
     {
         throw std::runtime_error("Cannot read private key from " + privateKeyFile);
     }
@@ -30,7 +30,7 @@ void JwtTokenSerializer::updateToken(const std::string& privateKeyFile)
 void JwtTokenSerializer::checkValidity(const std::string& publicKeyFile)
 {
     std::string publicKey;
-    if(!tokenHelper->getFileContents(publicKeyFile, publicKey))
+    if(!fileIoUtils->getFileContents(publicKeyFile, publicKey))
     {
         throw std::runtime_error("Cannot read public key from " + publicKeyFile);
     }
