@@ -1,39 +1,33 @@
 #include <jwt-cpp/jwt.h>
 #include <JwtTokenSerializer.h>
 
-void JwtTokenSerializer::updateToken(const std::string& privateKeyFile) 
+std::string JwtTokenSerializer::updateToken(const std::string& privateKeyFile) 
 {
-    std::string privateKey;
-    if(!fileIoUtils->getFileContents(privateKeyFile, privateKey))
-    {
-        throw std::runtime_error("Cannot read private key from " + privateKeyFile);
-    }
+    std::string privateKey =  fileIoUtils->getFileContents(privateKeyFile);
 
-    auto forgedToken = jwt::create();
-    auto decodedOriginalToken = jwt::decode(jwtToken);
+    auto newToken = jwt::create();
+    auto decodedOriginalToken = jwt::decode(originalToken);
+
     for(auto &e: decodedOriginalToken.get_header_json()) {
-        forgedToken.set_header_claim(e.first, e.second);
+        newToken.set_header_claim(e.first, e.second);
     }
     for(auto &e: decodedOriginalToken.get_payload_json()) {
-        forgedToken.set_payload_claim(e.first, e.second);
+        newToken.set_payload_claim(e.first, e.second);
     }
 
     // modify issued at & expiration date.
-    jwtToken = forgedToken
+    std::string updatedToken = newToken
         .set_issued_at(std::chrono::system_clock::now())
         .set_expires_at(std::chrono::system_clock::now() + std::chrono::seconds{3600})
         .sign(jwt::algorithm::rs256("", privateKey, "", ""));
     
     std::cout << "Token updated successfully\n";
+    return updatedToken;
 }
 
-void JwtTokenSerializer::checkValidity(const std::string& publicKeyFile)
+void JwtTokenSerializer::checkValidity(const std::string& jwtToken, const std::string& publicKeyFile)
 {
-    std::string publicKey;
-    if(!fileIoUtils->getFileContents(publicKeyFile, publicKey))
-    {
-        throw std::runtime_error("Cannot read public key from " + publicKeyFile);
-    }
+    std::string publicKey = fileIoUtils->getFileContents(publicKeyFile);
     
     auto decodedForgedToken = jwt::decode(jwtToken);
     auto forgedVerifier = jwt::verify()
@@ -48,10 +42,9 @@ void JwtTokenSerializer::checkValidity(const std::string& publicKeyFile)
     }
 }
 
-void JwtTokenSerializer::printTokenClaims() 
+void JwtTokenSerializer::printTokenClaims(const std::string& jwtToken) 
 {
     auto decodedToken = jwt::decode(jwtToken);
-
     std::cout << "Header Claims: \n";
     for(auto &e: decodedToken.get_header_json()) {
         std::cout << "\t" << e.first << ": " << e.second << "\n";
@@ -60,4 +53,9 @@ void JwtTokenSerializer::printTokenClaims()
     for(auto &e: decodedToken.get_payload_json()) {
         std::cout << "\t" << e.first << ": " << e.second << "\n";
     }
+}
+
+void JwtTokenSerializer::printOriginalTokenClaims()
+{
+    printTokenClaims(originalToken);
 }

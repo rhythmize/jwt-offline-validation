@@ -8,13 +8,14 @@
 class JwtTokenSerializer
 {
 public:
-    JwtTokenSerializer(std::string& token) : jwtToken(token) {}
-    void updateToken(const std::string& privateKeyFile);
-    void checkValidity(const std::string& publicKeyFile);
-    void printTokenClaims();
+    JwtTokenSerializer(const std::string& token) : originalToken(token) {}
+    std::string updateToken(const std::string& privateKeyFile);
+    void checkValidity(const std::string& jwtToken, const std::string& publicKeyFile);
+    void printTokenClaims(const std::string& jwtToken);
+    void printOriginalTokenClaims();
 
 private:
-    std::string jwtToken;
+    std::string originalToken;
     std::unique_ptr<FileIoUtils> fileIoUtils = std::make_unique<FileIoUtils>();
 };
 

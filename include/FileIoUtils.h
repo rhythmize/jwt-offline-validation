@@ -3,12 +3,11 @@
 
 #include <string>
 
-
 class FileIoUtils
 {
 public:
-    bool getFileContents(const std::string& filename, std::string& fileContent);
-    bool dumpToFile(const std::string& filename, const std::string& fileContent);
+    std::string getFileContents(const std::string& filename);
+    void dumpToFile(const std::string& filename, const std::string& fileContent);
 };
 
 #endif // _FileIoUtils_H_
