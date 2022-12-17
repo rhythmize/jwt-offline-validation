@@ -1,6 +1,7 @@
 #ifndef _JwtTokenVerification_H_
 #define _JwtTokenVerification_H_
 
+#include <vector>
 #include <JwtTokenSerializer.h>
 #include <X509CertificateChainValidator.h>
 
@@ -10,8 +11,9 @@ public:
     JwtTokenVerification(const std::string& jwtToken);
     void VerifyWithPublicKey(const std::string& privateKeyFile, const std::string &publicKeyFile);
     void VerifyWithPublicCertificate(const std::string& privateKeyFile, const std::string &x509CertificateFile);
-    void VerifyWithPublicCertificateWithSignatureVerification(const std::string& privateKeyFile, const std::string &x509CertificateFile, const std::string& trustedCertificateFile);
-    void VerifyWithPublicCertificateWithIntermediateCaSignatureVerification();
+    void VerifyWithPublicCertificateWithSignatureVerification(const std::string& privateKeyFile, const std::string &x509CertificateFile, const std::string& rootCaFile);
+    void VerifyWithPublicCertificateWithIntermediateCaSignatureVerification(const std::string& privateKeyFile, const std::string& x509CertificateFile, const std::string& intermediateCaFile, const std::string& rootCaFile);
+    void ValidateTokenWithCertificateSignatureVerification(const std::string& privateKeyFile, const std::vector<std::string>& certificateFiles);
 
 private:
     std::string getUpdatedToken(const std::string& privateKeyFile);

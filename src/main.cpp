@@ -26,7 +26,56 @@ int main(int argc, char *argv[])
     tokenVerification->VerifyWithPublicKey(privateKeyFile, publicKeyFile);
 
     std::cout << "=========================================================\n\n";
-    std::string privateKeyFile2 = "certs/test_signed_cert/private.pem";
-    std::string publicCertFile = "certs/test_signed_cert/certificate.crt";
-    tokenVerification->VerifyWithPublicCertificate(privateKeyFile2, publicCertFile);
+    privateKeyFile = "certs/test_self_signed/private.pem";
+    std::string publicCertFile = "certs/test_self_signed/certificate.crt";
+    tokenVerification->VerifyWithPublicCertificate(privateKeyFile, publicCertFile);
+
+    std::cout << "<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n";
+    privateKeyFile = "certs/test_self_signed/private.pem";
+    std::vector<std::string> certificateChain;
+    certificateChain.push_back("certs/test_self_signed/certificate.crt");
+    tokenVerification->ValidateTokenWithCertificateSignatureVerification(privateKeyFile, certificateChain);
+
+    std::cout << "=========================================================\n\n";
+    privateKeyFile = "certs/test_signed_with_rootCA/private.pem";
+    publicCertFile = "certs/test_signed_with_rootCA/certificate.crt";
+    std::string rootCaCert = "certs/test_signed_with_rootCA/root_certificate.crt";
+    tokenVerification->VerifyWithPublicCertificateWithSignatureVerification(privateKeyFile, publicCertFile, rootCaCert);
+
+    std::cout << "<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n";
+    privateKeyFile = "certs/test_signed_with_rootCA/private.pem";
+    certificateChain.clear();
+    certificateChain.push_back("certs/test_signed_with_rootCA/certificate.crt");
+    certificateChain.push_back("certs/test_signed_with_rootCA/root_certificate.crt");
+    tokenVerification->ValidateTokenWithCertificateSignatureVerification(privateKeyFile, certificateChain);
+
+    std::cout << "=========================================================\n\n";
+    privateKeyFile = "certs/test_signed_with_intermediateCA/private.pem";
+    publicCertFile = "certs/test_signed_with_intermediateCA/certificate.crt";
+    rootCaCert = "certs/test_signed_with_intermediateCA/root_certificate.crt";
+    std::string intermediateCaCert = "certs/test_signed_with_intermediateCA/intermediate_certificate.crt";
+    tokenVerification->VerifyWithPublicCertificateWithIntermediateCaSignatureVerification(privateKeyFile, publicCertFile, intermediateCaCert, rootCaCert);
+
+    std::cout << "<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n";
+    privateKeyFile = "certs/test_signed_with_intermediateCA/private.pem";
+    certificateChain.clear();
+    certificateChain.push_back("certs/test_signed_with_intermediateCA/certificate.crt");
+    certificateChain.push_back("certs/test_signed_with_intermediateCA/intermediate_certificate.crt");
+    certificateChain.push_back("certs/test_signed_with_intermediateCA/root_certificate.crt");
+    tokenVerification->ValidateTokenWithCertificateSignatureVerification(privateKeyFile, certificateChain);
+
+    std::cout << "=========================================================\n\n";
+    privateKeyFile = "certs/test_signed_with_intermediateCA/check/root/ca/intermediate/private/test.key.pem";
+    publicCertFile = "certs/test_signed_with_intermediateCA/check/root/ca/intermediate/certs/test.cert.pem";
+    rootCaCert = "certs/test_signed_with_intermediateCA/check/root/ca/certs/ca.cert.pem";
+    intermediateCaCert = "certs/test_signed_with_intermediateCA/check/root/ca/intermediate/certs/intermediate.cert.pem";
+    tokenVerification->VerifyWithPublicCertificateWithIntermediateCaSignatureVerification(privateKeyFile, publicCertFile, intermediateCaCert, rootCaCert);
+
+    std::cout << "<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n";
+    privateKeyFile = "certs/test_signed_with_intermediateCA/check/root/ca/intermediate/private/test.key.pem";
+    certificateChain.clear();
+    certificateChain.push_back("certs/test_signed_with_intermediateCA/check/root/ca/intermediate/certs/test.cert.pem");
+    certificateChain.push_back("certs/test_signed_with_intermediateCA/check/root/ca/intermediate/certs/intermediate.cert.pem");
+    certificateChain.push_back("certs/test_signed_with_intermediateCA/check/root/ca/certs/ca.cert.pem");
+    tokenVerification->ValidateTokenWithCertificateSignatureVerification(privateKeyFile, certificateChain);
 }
