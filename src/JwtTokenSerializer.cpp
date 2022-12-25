@@ -15,7 +15,7 @@ std::string JwtTokenSerializer::updateToken(const std::string& privateKeyFile)
         newToken.set_payload_claim(e.first, e.second);
     }
 
-    // modify issued at & expiration date.
+    // modify iat & exp claims
     std::string updatedToken = newToken
         .set_issued_at(std::chrono::system_clock::now())
         .set_expires_at(std::chrono::system_clock::now() + std::chrono::seconds{3600})

@@ -11,7 +11,7 @@ public:
     JwtTokenSerializer(const std::string& token) : originalToken(token) {}
     std::string updateToken(const std::string& privateKeyFile);
     void checkValidity(const std::string& jwtToken, const std::string& publicKeyFile);
-    void printTokenClaims(const std::string& jwtToken);
+    static void printTokenClaims(const std::string& jwtToken);
     void printOriginalTokenClaims();
 
 private:
