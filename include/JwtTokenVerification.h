@@ -1,23 +1,14 @@
 #ifndef _JwtTokenVerification_H_
 #define _JwtTokenVerification_H_
 
+#include <string>
 #include <vector>
-#include <JwtTokenSerializer.h>
-#include <X509CertificateChainValidator.h>
 
 class JwtTokenVerification
 {
 public:
-    JwtTokenVerification(const std::string& jwtToken);
-    void VerifyWithPublicKey(const std::string& privateKeyFile, const std::string &publicKeyFile);
-    void ValidateTokenWithCertificateSignatureVerification(const std::string& privateKeyFile, const std::vector<std::string>& certificateFiles);
-
-private:
-    std::string getUpdatedToken(const std::string& privateKeyFile);
-
-    std::unique_ptr<JwtTokenSerializer> tokenSerializer;
-    std::unique_ptr<FileIoUtils> fileIoUtils = std::make_unique<FileIoUtils>();
-    std::unique_ptr<X509CertificateChainValidator> certificateValidator = std::make_unique<X509CertificateChainValidator>();
+    static void ValidateWithPublicKey(const std::string& token, const std::string& publicKeyFile);
+    static void ValidateWithPublicCertificate(const std::string& token, const std::vector<std::string>& caCerts);
 };
 
 #endif // _JwtTokenVerification_H_

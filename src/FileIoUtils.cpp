@@ -1,5 +1,4 @@
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <jwt-cpp/jwt.h>
 #include <FileIoUtils.h>

@@ -1,10 +1,9 @@
 #include <iostream>
 #include <openssl/pem.h>
-#include <openssl/err.h>
 #include <X509CertificateChainValidator.h>
 
 
-bool X509CertificateChainValidator::VerifyUsingX509Store(const std::vector<std::string>& certificateFiles)
+bool X509CertificateChainValidator::VerifyUsingX509Store(const std::vector<std::string>& caCertificates)
 {
     X509_STORE_CTX* storeCtx = X509_STORE_CTX_new();
     X509_STORE *trustStore = X509_STORE_new();
@@ -14,25 +13,22 @@ bool X509CertificateChainValidator::VerifyUsingX509Store(const std::vector<std::
     X509* caCert;
     std::string data;
 
-    for(size_t i=1; i < certificateFiles.size() - 1; i++)
+    for(size_t i=1; i < caCertificates.size() - 1; i++)
     {
         // create untrusted chain
-        data = fileIoUtils->getFileContents(certificateFiles[i]);
-        BIO_puts(b, data.c_str());
+        BIO_puts(b, caCertificates[i].c_str());
         caCert = PEM_read_bio_X509(b, NULL, NULL, NULL);
         sk_X509_push(chain, caCert);
         BIO_reset(b);
     }
     
     // add trusted ca to store
-    data = fileIoUtils->getFileContents(certificateFiles[certificateFiles.size() - 1]);
-    BIO_puts(b, data.c_str());
+    BIO_puts(b, caCertificates[caCertificates.size() - 1].c_str());
     caCert = PEM_read_bio_X509(b, NULL, NULL, NULL);
     X509_STORE_add_cert(trustStore, caCert);
     
-    data = fileIoUtils->getFileContents(certificateFiles[0]);
     BIO_reset(b);
-    BIO_puts(b, data.c_str());
+    BIO_puts(b, caCertificates[0].c_str());
     X509* cert = PEM_read_bio_X509(b, NULL, NULL, NULL);
 
     X509_STORE_CTX_init(storeCtx, trustStore, cert, chain);

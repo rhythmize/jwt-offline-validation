@@ -6,8 +6,8 @@
 class FileIoUtils
 {
 public:
-    std::string getFileContents(const std::string& filename);
-    void dumpToFile(const std::string& filename, const std::string& fileContent);
+    static std::string getFileContents(const std::string& filename);
+    static void dumpToFile(const std::string& filename, const std::string& fileContent);
 };
 
 #endif // _FileIoUtils_H_
