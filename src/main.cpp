@@ -11,10 +11,13 @@ int main(int argc, char *argv[])
  
     Runner::ModifyTokenAndValidateAgainstCustomPublicKey(jwtToken);
     std::cout << "=========================================================\n\n";
- 
+    
+    Runner::ValidateWithInMemoryKeys(jwtToken);
+    std::cout << "=========================================================\n\n";
+
     Runner::ModifyTokenAndValidateAgainstSelfSignedCertificate(jwtToken);
     std::cout << "=========================================================\n\n";
- 
+
     Runner::ModifyTokenAndValidateAgainstRootCaSignedCertificate(jwtToken);
     std::cout << "=========================================================\n\n";
 

@@ -5,12 +5,24 @@
 #include <JwtTokenVerification.h>
 #include <Runner.h>
 
+#include <memory>
+#include <RsaKeyPairHelper.h>
+
 
 void Runner::ValidateOriginalToken(std::string& jwtToken)
 {
     std::cout << "Original token claims:\n";
     JwtTokenSerializer::printTokenClaims(jwtToken);
     JwtTokenVerification::ValidateWithPublicKey(jwtToken, FileIoUtils::getFileContents(OriginalTokenParams.publicKeyFile));
+}
+
+void Runner::ValidateWithInMemoryKeys(std::string& jwtToken)
+{
+    auto keyPairHelper = std::make_unique<RsaKeyPairHelper>(4096);
+    std::string updatedToken = JwtTokenSerializer::updateToken(jwtToken, keyPairHelper->getPrivateKey());
+    std::cout << "Updated token claims (checking with in memory keys):\n";
+    JwtTokenSerializer::printTokenClaims(updatedToken);
+    JwtTokenVerification::ValidateWithPublicKey(updatedToken, keyPairHelper->getPublicKey());
 }
 
 void Runner::ModifyTokenAndValidateAgainstCustomPublicKey(std::string& jwtToken)
