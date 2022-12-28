@@ -18,6 +18,9 @@ int main(int argc, char *argv[])
     Runner::ModifyTokenAndValidateAgainstSelfSignedCertificate(jwtToken);
     std::cout << "=========================================================\n\n";
 
+    Runner::ValidateWithInMemoryCert(jwtToken);
+    std::cout << "=========================================================\n\n";
+    
     Runner::ModifyTokenAndValidateAgainstRootCaSignedCertificate(jwtToken);
     std::cout << "=========================================================\n\n";
 
