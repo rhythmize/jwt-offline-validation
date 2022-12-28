@@ -2,9 +2,9 @@
 #include <iostream>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
-#include <RsaKeyPairHelper.h>
+#include <RsaKeyPair.h>
 
-RsaKeyPairHelper::RsaKeyPairHelper(int keySize) : keypair(EVP_PKEY_new(), EVP_PKEY_free) {
+RsaKeyPair::RsaKeyPair(int keySize) : keypair(EVP_PKEY_new(), EVP_PKEY_free) {
     RSA *rsa = RSA_new();   // smart pointer not required, free managed by EVP_PKEY
     std::unique_ptr<BIGNUM, decltype(&BN_free)> e(BN_new(), BN_free);
 
@@ -21,7 +21,7 @@ RsaKeyPairHelper::RsaKeyPairHelper(int keySize) : keypair(EVP_PKEY_new(), EVP_PK
     }
 }
 
-std::string RsaKeyPairHelper::getPrivateKey() {
+std::string RsaKeyPair::getPrivateKey() {
     char *data;
     std::string privateKey;
 
@@ -43,7 +43,7 @@ std::string RsaKeyPairHelper::getPrivateKey() {
     return privateKey;
 }
 
-std::string RsaKeyPairHelper::getPublicKey() {
+std::string RsaKeyPair::getPublicKey() {
     char *data;
     std::string publicKey;
 

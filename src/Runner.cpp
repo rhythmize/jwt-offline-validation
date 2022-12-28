@@ -4,8 +4,8 @@
 #include <JwtTokenSerializer.h>
 #include <JwtTokenVerification.h>
 #include <Runner.h>
-#include <RsaKeyPairHelper.h>
-#include <X509CertificateHelper.h>
+#include <RsaKeyPair.h>
+#include <X509Certificate.h>
 
 
 void Runner::ValidateOriginalToken(std::string& jwtToken)
@@ -17,7 +17,7 @@ void Runner::ValidateOriginalToken(std::string& jwtToken)
 
 void Runner::ValidateWithInMemoryKeys(std::string& jwtToken)
 {
-    auto keyPairHelper = std::make_unique<RsaKeyPairHelper>(4096);
+    auto keyPairHelper = std::make_unique<RsaKeyPair>(4096);
     std::string updatedToken = JwtTokenSerializer::updateToken(jwtToken, keyPairHelper->getPrivateKey());
     std::cout << "Updated token claims (checking with in memory keys):\n";
     JwtTokenSerializer::printTokenClaims(updatedToken);
@@ -34,9 +34,9 @@ void Runner::ModifyTokenAndValidateAgainstCustomPublicKey(std::string& jwtToken)
 
 void Runner::ValidateWithInMemoryCert(std::string& jwtToken) 
 {
+    std:: cout << "validating with in memory certs\n";
     std::string rootCname = "root";
-    std::shared_ptr<X509CertificateHelper> x509Cert = std::make_shared<X509CertificateHelper>(rootCname);
-    x509Cert->addCaExtensions();
+    std::shared_ptr<X509Certificate> x509Cert = std::make_shared<X509Certificate>(rootCname);
     x509Cert->sign(x509Cert);   // self sign
 
     std::vector<std::string> caCerts;

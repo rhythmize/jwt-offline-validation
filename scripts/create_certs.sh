@@ -12,7 +12,7 @@ leafDir='leaf'
 
 # create self signed root CA
 mkdir -p ${rootDir}
-openssl req -x509 -nodes -newkey rsa:4096 -sha256 -keyout ${rootDir}/private.pem -out ${rootDir}/certificate.crt -subj "/CN=root"
+openssl req -x509 -nodes -newkey rsa:4096 -config $configFile -extensions ca_cert -sha256 -keyout ${rootDir}/private.pem -out ${rootDir}/certificate.crt -subj "/CN=root"
 
 # create recursive intermediate CAs where next one is siged by previous one 
 signerDir=${rootDir}
@@ -21,7 +21,7 @@ do
 	signeeDir="intermediate${i}"
 	mkdir -p ${signeeDir}
 	openssl req -nodes -newkey rsa:4096 -sha256 -keyout ${signeeDir}/private.pem -out ${signeeDir}/certificate.csr -subj "/CN=${signeeDir}"
-	openssl x509 -req -CA ${signerDir}/certificate.crt -CAkey ${signerDir}/private.pem -CAcreateserial -extfile $configFile -extensions v3_intermediate_ca -in ${signeeDir}/certificate.csr -out ${signeeDir}/certificate.crt
+	openssl x509 -req -CA ${signerDir}/certificate.crt -CAkey ${signerDir}/private.pem -CAcreateserial -extfile $configFile -extensions ca_cert -in ${signeeDir}/certificate.csr -out ${signeeDir}/certificate.crt
 	signerDir=${signeeDir}
 done
 
