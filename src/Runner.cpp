@@ -34,10 +34,13 @@ void Runner::ModifyTokenAndValidateAgainstCustomPublicKey(std::string& jwtToken)
 
 void Runner::ValidateWithInMemoryCert(std::string& jwtToken) 
 {
-    std:: cout << "validating with in memory certs\n";
     std::string rootCname = "root";
     std::shared_ptr<X509Certificate> x509Cert = std::make_shared<X509Certificate>(rootCname);
-    x509Cert->sign(x509Cert);   // self sign
+    x509Cert
+        ->createCsr()
+        ->setCommonFields()
+        ->addExtensions(x509Cert, true)
+        ->sign(x509Cert);   // self sign
 
     std::vector<std::string> caCerts;
     caCerts.push_back(x509Cert->getPublicCert());
@@ -60,6 +63,33 @@ void Runner::ModifyTokenAndValidateAgainstSelfSignedCertificate(std::string& jwt
     JwtTokenVerification::ValidateWithPublicCertificate(updatedToken, caCerts);
 }
 
+void Runner::ValidateWithInMemoryRootCert(std::string& jwtToken) {
+    std::string rootCname = "root";
+    std::shared_ptr<X509Certificate> rootCert = std::make_shared<X509Certificate>(rootCname);
+    rootCert
+        ->createCsr()
+        ->setCommonFields()
+        ->addExtensions(rootCert, true)
+        ->sign(rootCert);   // self sign
+
+    std::string leafCname = "leaf";
+    std::shared_ptr<X509Certificate> leafCert = std::make_unique<X509Certificate>(leafCname);
+    leafCert
+        ->createCsr()
+        ->setCommonFields()
+        ->addExtensions(rootCert, false)
+        ->sign(rootCert);
+
+    std::vector<std::string> caCerts;
+    caCerts.push_back(leafCert->getPublicCert());
+    caCerts.push_back(rootCert->getPublicCert());
+    
+    std::string updatedToken = JwtTokenSerializer::updateToken(jwtToken, leafCert->getPrivateKey());
+    std::cout << "Updated token claims (checking with in memory root cert):\n";
+    JwtTokenSerializer::printTokenClaims(updatedToken);
+    JwtTokenVerification::ValidateWithPublicCertificate(updatedToken, caCerts);
+}
+
 void Runner::ModifyTokenAndValidateAgainstRootCaSignedCertificate(std::string& jwtToken)
 {
     std::vector<std::string> caCerts;
@@ -69,6 +99,42 @@ void Runner::ModifyTokenAndValidateAgainstRootCaSignedCertificate(std::string& j
     
     std::string updatedToken = JwtTokenSerializer::updateToken(jwtToken, FileIoUtils::getFileContents(TokenSignedWithRootCaParams.privateKeyFile));
     std::cout << "Updated token claims (checking with root -> leaf cert):\n";
+    JwtTokenSerializer::printTokenClaims(updatedToken);
+    JwtTokenVerification::ValidateWithPublicCertificate(updatedToken, caCerts);
+}
+
+void Runner::ValidateWithInMemoryIntermediateCert(std::string& jwtToken) {
+    std::string rootCname = "root";
+    std::shared_ptr<X509Certificate> rootCert = std::make_shared<X509Certificate>(rootCname);
+    rootCert
+        ->createCsr()
+        ->setCommonFields()
+        ->addExtensions(rootCert, true)
+        ->sign(rootCert);   // self sign
+
+    std::string intermediateCname = "intermediate";
+    std::shared_ptr<X509Certificate> intermediateCert = std::make_shared<X509Certificate>(intermediateCname);
+    intermediateCert
+        ->createCsr()
+        ->setCommonFields()
+        ->addExtensions(rootCert, true)
+        ->sign(rootCert);
+
+    std::string leafCname = "leaf";
+    std::shared_ptr<X509Certificate> leafCert = std::make_unique<X509Certificate>(leafCname);
+    leafCert
+        ->createCsr()
+        ->setCommonFields()
+        ->addExtensions(intermediateCert, false)
+        ->sign(intermediateCert);
+
+    std::vector<std::string> caCerts;
+    caCerts.push_back(leafCert->getPublicCert());
+    caCerts.push_back(intermediateCert->getPublicCert());
+    caCerts.push_back(rootCert->getPublicCert());
+    
+    std::string updatedToken = JwtTokenSerializer::updateToken(jwtToken, leafCert->getPrivateKey());
+    std::cout << "Updated token claims (checking with in memory intermediate cert):\n";
     JwtTokenSerializer::printTokenClaims(updatedToken);
     JwtTokenVerification::ValidateWithPublicCertificate(updatedToken, caCerts);
 }

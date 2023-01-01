@@ -1,28 +1,26 @@
 #include <iostream>
 #include <memory>
+#include <openssl/err.h>
 #include <openssl/pem.h>
 #include <X509Certificate.h>
 
-X509Certificate::X509Certificate(std::string& cname) : x509(X509_new(), X509_free) {
-    setVersionAndSerialNumber();
+X509Certificate::X509Certificate(std::string& cname) : certCname(cname), 
+    x509(X509_new(), X509_free),x509Req(X509_REQ_new(), X509_REQ_free) { }
 
-    if (X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) == NULL) {
-        throw new std::runtime_error("Cannot update not before time for certificate");
-    }
-    
-    // expire in 1 hour 
-    if (X509_gmtime_adj(X509_getm_notAfter(x509.get()), 3600L) == NULL) {
-        throw new std::runtime_error("Cannot update expiration time for certificate");
+X509Certificate* X509Certificate::createCsr() {
+    if (X509_REQ_set_pubkey(x509Req.get(), keyPair->getKeyPair().get()) != 1) {
+        throw new std::runtime_error("Cannot set public key for CSR");
     }
 
-    if (X509_set_pubkey(x509.get(), keyPair->getKeyPair().get()) != 1) {
-        throw new std::runtime_error("Cannot set public key for certificate");
+    unsigned char *cnamePtr = reinterpret_cast<unsigned char *>(const_cast<char*>(certCname.c_str()));
+    if (X509_NAME_add_entry_by_txt(X509_REQ_get_subject_name(x509Req.get()), "CN", MBSTRING_ASC, cnamePtr, -1, -1, 0) != 1) {
+        throw new std::runtime_error("Cannot set common name for CSR");
     }
 
-    unsigned char *cnamePtr = reinterpret_cast<unsigned char *>(const_cast<char*>(cname.c_str()));
-    if (X509_NAME_add_entry_by_txt(getSubjectName(), "CN", MBSTRING_ASC, cnamePtr, -1, -1, 0) != 1) {
-        throw new std::runtime_error("Cannot set common name for certificate");
+    if (X509_REQ_sign(x509Req.get(), keyPair->getKeyPair().get(), EVP_sha256()) == 0) {
+        throw new std::runtime_error("Cannot self-sign CSR");
     }
+    return this;
 }
 
 X509_NAME* X509Certificate::getSubjectName() {
@@ -120,7 +118,7 @@ void X509Certificate::addSubjectKeyIdentifierExtension(X509V3_CTX *ctx) {
     OPENSSL_free(extensionFormatDer);
 }
 
-void X509Certificate::addAuthorityKeyIdentifierExtension(X509V3_CTX *ctx) {
+void X509Certificate::addAuthorityKeyIdentifierExtension(X509V3_CTX *ctx, bool isCa) {
     const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_authority_key_identifier);
     if (extensionMethod == NULL) {
         throw new std::runtime_error("Cannot find extension method for Authority Key Identifier");
@@ -133,11 +131,11 @@ void X509Certificate::addAuthorityKeyIdentifierExtension(X509V3_CTX *ctx) {
     }
     
     STACK_OF(CONF_VALUE) *stackPtr = confValueStack.get();
-    if (X509V3_add_value("keyid", "always", &stackPtr) != 1) {
+    if (X509V3_add_value("keyid", isCa ? "always" : NULL, &stackPtr) != 1) {
         throw new std::runtime_error("Cannot add keyid:always Authority Key Identifier to extension");
     }
     
-    if (X509V3_add_value("issuer", NULL, &stackPtr) != 1) {
+    if (X509V3_add_value("issuer", isCa ? NULL : "always", &stackPtr) != 1) {
         throw new std::runtime_error("Cannot add issuer  Authority Key Identifier to extension");
     }
     
@@ -161,7 +159,7 @@ void X509Certificate::addAuthorityKeyIdentifierExtension(X509V3_CTX *ctx) {
     OPENSSL_free(extensionFormatDer);
 }
 
-void X509Certificate::addBasicConstraintsExtension(X509V3_CTX *ctx) {
+void X509Certificate::addBasicConstraintsExtension(X509V3_CTX *ctx, bool isCa) {
     const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_basic_constraints);
     if (extensionMethod == NULL) {
         throw new std::runtime_error("Cannot find extension method for Basic Constraints");
@@ -174,7 +172,7 @@ void X509Certificate::addBasicConstraintsExtension(X509V3_CTX *ctx) {
     }
     
     STACK_OF(CONF_VALUE) *stackPtr = confValueStack.get();
-    if (X509V3_add_value("CA", "TRUE", &stackPtr) != 1) {
+    if (X509V3_add_value("CA", isCa ? "TRUE" : "FALSE", &stackPtr) != 1) {
         throw new std::runtime_error("Cannot add CA:TRUE constraint to extension");
     }
 
@@ -198,7 +196,7 @@ void X509Certificate::addBasicConstraintsExtension(X509V3_CTX *ctx) {
     OPENSSL_free(extensionFormatDer);
 }
 
-void X509Certificate::addKeyUsageExtension(X509V3_CTX *ctx) {
+void X509Certificate::addKeyUsageExtension(X509V3_CTX *ctx, bool isCa) {
     const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_key_usage);
     if (extensionMethod == NULL) {
         throw new std::runtime_error("Cannot find extension method for Key Usage");
@@ -214,13 +212,18 @@ void X509Certificate::addKeyUsageExtension(X509V3_CTX *ctx) {
     if (X509V3_add_value("digitalSignature", NULL, &stackPtr) != 1) {
         throw new std::runtime_error("Cannot add digitalSignature Key usage to extension");
     }
-
-    if (X509V3_add_value("cRLSign", NULL, &stackPtr) != 1) {
-        throw new std::runtime_error("Cannot add cRLSign Key usage to extension");
-    }
-    
-    if (X509V3_add_value("keyCertSign", NULL, &stackPtr) != 1) {
-        throw new std::runtime_error("Cannot add keyCertSign Key usage to extension");
+    if (isCa) {
+        if (X509V3_add_value("cRLSign", NULL, &stackPtr) != 1) {
+            throw new std::runtime_error("Cannot add cRLSign Key usage to extension");
+        }
+        
+        if (X509V3_add_value("keyCertSign", NULL, &stackPtr) != 1) {
+            throw new std::runtime_error("Cannot add keyCertSign Key usage to extension");
+        }
+    } else {
+        if (X509V3_add_value("keyEncipherment", NULL, &stackPtr) != 1) {
+            throw new std::runtime_error("Cannot add keyEncipherment to extension");
+        }
     }
 
     auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
@@ -243,21 +246,115 @@ void X509Certificate::addKeyUsageExtension(X509V3_CTX *ctx) {
     OPENSSL_free(extensionFormatDer);
 }
 
-void X509Certificate::sign(std::shared_ptr<X509Certificate> signingCertificate) {
+void X509Certificate::addNsCertTypeExtension(X509V3_CTX *ctx) {
+    const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_netscape_cert_type);
+    if (extensionMethod == NULL) {
+        throw new std::runtime_error("Cannot find extension method for NsCertType");
+    }
+
+    auto l = [&](STACK_OF(CONF_VALUE) *ptr) { sk_CONF_VALUE_pop_free(ptr, X509V3_conf_free); };
+    std::unique_ptr<STACK_OF(CONF_VALUE), decltype(l)> confValueStack(sk_CONF_VALUE_new(NULL), l);
+    if (confValueStack == NULL) {
+        throw new std::runtime_error("Cannot initialize STACK_OF configuration values for extension");
+    }
+    
+    STACK_OF(CONF_VALUE) *stackPtr = confValueStack.get();
+    if (X509V3_add_value("server", NULL, &stackPtr) != 1) {
+        throw new std::runtime_error("Cannot add digitalSignature Key usage to extension");
+    }
+
+    auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
+    std::unique_ptr<ASN1_VALUE, decltype(l1)> extensionValue(
+        reinterpret_cast<ASN1_VALUE *>(extensionMethod->v2i(extensionMethod, ctx, confValueStack.get())), 
+        l1
+    );
+    if (extensionValue == NULL) {
+        throw new std::runtime_error("Cannot initialize extension value for nsCertType extension");
+    }
+    unsigned char *extensionFormatDer = NULL; 
+    int extensionLength = ASN1_item_i2d(extensionValue.get(), &extensionFormatDer, ASN1_ITEM_ptr(extensionMethod->it));
+    if (extensionLength <= 0) {
+        throw std::runtime_error("Cannot convert extension value to DER format");
+    }
+
+    addExtension(NID_netscape_cert_type, extensionFormatDer, extensionLength, 0);
+
+    OPENSSL_free(extensionFormatDer);
+}
+
+void X509Certificate::addNsCommentExtension(X509V3_CTX *ctx) {
+    const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_netscape_comment);
+    if (extensionMethod == NULL) {
+        throw new std::runtime_error("Cannot find extension method for NsCertType");
+    }
+
+    auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
+    std::unique_ptr<ASN1_VALUE, decltype(l1)> extensionValue(
+        reinterpret_cast<ASN1_VALUE *>(extensionMethod->s2i(extensionMethod, ctx, "OpenSSL Generated Server Certificate")), 
+        l1
+    );
+    if (extensionValue == NULL) {
+        throw new std::runtime_error("Cannot initialize extension value for nsCertType extension");
+    }
+    unsigned char *extensionFormatDer = NULL; 
+    int extensionLength = ASN1_item_i2d(extensionValue.get(), &extensionFormatDer, ASN1_ITEM_ptr(extensionMethod->it));
+    if (extensionLength <= 0) {
+        throw std::runtime_error("Cannot convert extension value to DER format");
+    }
+
+    addExtension(NID_netscape_comment, extensionFormatDer, extensionLength, 0);
+
+    OPENSSL_free(extensionFormatDer);
+}
+
+X509Certificate* X509Certificate::setCommonFields() {
+    setVersionAndSerialNumber();
+
+    if (X509_gmtime_adj(X509_getm_notBefore(x509.get()), 0) == NULL) {
+        throw new std::runtime_error("Cannot update not before time for certificate");
+    }
+    
+    // expire in 1 hour 
+    if (X509_gmtime_adj(X509_getm_notAfter(x509.get()), 3600L) == NULL) {
+        throw new std::runtime_error("Cannot update expiration time for certificate");
+    }
+
+    if (X509_set_subject_name(x509.get(), X509_REQ_get_subject_name(x509Req.get())) != 1) {
+        throw new std::runtime_error("Cannot set subject name for Certificate");
+    }
+
+    std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)> csrPubKey(X509_REQ_get_pubkey(x509Req.get()), EVP_PKEY_free);
+    if (csrPubKey == NULL) {
+        throw new std::runtime_error("Cannot get public key from CSR");
+    }
+
+	if (X509_set_pubkey(x509.get(), csrPubKey.get()) != 1) {
+        throw new std::runtime_error("Cannot set publick key for certificate");
+    }
+    return this;
+}
+
+X509Certificate* X509Certificate::addExtensions(std::shared_ptr<X509Certificate> signingCertificate, bool isCa) {
     X509V3_CTX ctx;
     X509V3_set_ctx_nodb(&ctx); // Configure no database for extension context
-    // Issuer and subject certs: both the target since it is self signed, no request and no CRL
-    X509V3_set_ctx(&ctx, x509.get(), x509.get(), NULL, NULL, 0);
+    X509V3_set_ctx(&ctx, signingCertificate->x509.get(), NULL, x509Req.get(), NULL, 0);
 
     addSubjectKeyIdentifierExtension(&ctx);
-    addAuthorityKeyIdentifierExtension(&ctx);
-    addBasicConstraintsExtension(&ctx);
-    addKeyUsageExtension(&ctx);
+    addAuthorityKeyIdentifierExtension(&ctx, isCa);
+    addBasicConstraintsExtension(&ctx, isCa);
+    addKeyUsageExtension(&ctx, isCa);
+    if (!isCa) {
+        addNsCertTypeExtension(&ctx);
+        addNsCommentExtension(&ctx);
+    }
+    return this;
+}
 
+void X509Certificate::sign(std::shared_ptr<X509Certificate> signingCertificate) {
     if (X509_set_issuer_name(x509.get(), signingCertificate->getSubjectName()) != 1) {
         throw new std::runtime_error("Cannot set issuer for certificate");
     }
-    
+
     if (X509_sign(x509.get(), signingCertificate->keyPair->getKeyPair().get(), EVP_sha256()) == 0) {
         throw new std::runtime_error("Cannot sign the certificate using private key");
     }
@@ -279,9 +376,10 @@ void X509Certificate::createRandomSerialNumber(ASN1_INTEGER *serial) {
     }
 }
 
-void X509Certificate::dumpToFile(std::string& prefix) {
-    std::string keyFileName = prefix + "_private.pem";
-    std::string certFileName = prefix + "_certificate.crt";
+void X509Certificate::dumpToFile() {
+    std::string keyFileName = certCname + "_private.pem";
+    std::string certFileName = certCname + "_certificate.crt";
+    std::string csrFileName = certCname + "_certificate.csr";
     
     std::unique_ptr<BIO, decltype(&BIO_free)> bioPrivateKey(BIO_new_file(keyFileName.c_str(), "wb"), BIO_free);
     if (bioPrivateKey == NULL) {
@@ -298,6 +396,15 @@ void X509Certificate::dumpToFile(std::string& prefix) {
     }
 
     if (PEM_write_bio_X509(bioCertificate.get(), x509.get()) != 1) {
+        throw new std::runtime_error("Cannot write X509 certificate to file");
+    }
+
+    std::unique_ptr<BIO, decltype(&BIO_free)> bioCertificateSigningRequest(BIO_new_file(csrFileName.c_str(), "wb"), BIO_free);
+    if (bioCertificate == NULL) {
+        throw new std::runtime_error("Cannot initialize BIO");
+    }
+
+    if (PEM_write_bio_X509_REQ(bioCertificateSigningRequest.get(), x509Req.get()) != 1) {
         throw new std::runtime_error("Cannot write X509 certificate to file");
     }
 }
