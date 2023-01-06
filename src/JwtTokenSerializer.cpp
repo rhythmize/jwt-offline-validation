@@ -1,7 +1,7 @@
 #include <jwt-cpp/jwt.h>
 #include <JwtTokenSerializer.h>
 
-std::string JwtTokenSerializer::updateToken(const std::string& jwtToken, const std::string& privateKey) 
+std::string JwtTokenSerializer::ModifyAndSignToken(const std::string& jwtToken, const std::string& privateKey) 
 {
     auto newToken = jwt::create();
     auto decodedOriginalToken = jwt::decode(jwtToken);
@@ -23,7 +23,7 @@ std::string JwtTokenSerializer::updateToken(const std::string& jwtToken, const s
     return updatedToken;
 }
 
-void JwtTokenSerializer::checkValidity(const std::string& jwtToken, const std::string& publicKey)
+void JwtTokenSerializer::CheckValidity(const std::string& jwtToken, const std::string& publicKey)
 {
     auto decodedForgedToken = jwt::decode(jwtToken);
     auto forgedVerifier = jwt::verify()
@@ -38,7 +38,7 @@ void JwtTokenSerializer::checkValidity(const std::string& jwtToken, const std::s
     }
 }
 
-void JwtTokenSerializer::printTokenClaims(const std::string& jwtToken) 
+void JwtTokenSerializer::PrintTokenClaims(const std::string& jwtToken) 
 {
     auto decodedToken = jwt::decode(jwtToken);
     std::cout << "Header Claims: \n";

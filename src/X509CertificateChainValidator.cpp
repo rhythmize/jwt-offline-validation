@@ -1,4 +1,3 @@
-#include <iostream>
 #include <openssl/pem.h>
 #include <X509CertificateChainValidator.h>
 
@@ -44,7 +43,7 @@ bool X509CertificateChainValidator::VerifyUsingX509Store(const std::vector<std::
     return result;
 }
 
-void X509CertificateChainValidator::printCertificateInfo(const std::string& cert_pem)
+void X509CertificateChainValidator::PrintCertificateInfo(const std::string& cert_pem)
 {
     BIO *b = BIO_new(BIO_s_mem());
     BIO_puts(b, cert_pem.c_str());

@@ -21,7 +21,7 @@ RsaKeyPair::RsaKeyPair(int keySize) : keypair(EVP_PKEY_new(), EVP_PKEY_free) {
     }
 }
 
-std::string RsaKeyPair::getPrivateKey() {
+std::string RsaKeyPair::GetPrivateKey() {
     char *data;
     std::string privateKey;
 
@@ -43,7 +43,7 @@ std::string RsaKeyPair::getPrivateKey() {
     return privateKey;
 }
 
-std::string RsaKeyPair::getPublicKey() {
+std::string RsaKeyPair::GetPublicKey() {
     char *data;
     std::string publicKey;
 

@@ -8,9 +8,9 @@
 class RsaKeyPair {
 public:
     RsaKeyPair(int keySize);
-    std::string getPublicKey();
-    std::string getPrivateKey();
-    std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>& getKeyPair() { return keypair; }
+    std::string GetPublicKey();
+    std::string GetPrivateKey();
+    std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>& GetKeyPair() { return keypair; }
 
 private:
     std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)> keypair;

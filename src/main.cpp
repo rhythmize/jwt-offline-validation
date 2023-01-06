@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 
     Runner::ValidateWithInMemoryRootCert(jwtToken);
     std::cout << "=========================================================\n\n";
-    
+
     Runner::ModifyTokenAndValidateAgainstIntermediateCaSignedCertificate(jwtToken);
     std::cout << "=========================================================\n\n";
 
