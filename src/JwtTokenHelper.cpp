@@ -1,6 +1,5 @@
 #include <jwt-cpp/jwt.h>
 #include <JwtTokenHelper.h>
-#include <X509CertificateChainValidator.h>
 
 
 jwt::builder<jwt::traits::kazuho_picojson> JwtTokenHelper::GetModifiedTokenBuilder(const std::string& jwtToken) {
@@ -24,8 +23,9 @@ void JwtTokenHelper::ValidateTokenAgainstPublicKey(const std::string& jwtToken, 
     CheckValidity(jwtToken, publicKey);
 }
 
-void JwtTokenHelper::ValidateTokenAgainstPublicCertificate(const std::string& token, const std::vector<std::string>& caCerts) {
-    std::cout << "Cert Validation: " << X509CertificateChainValidator::ValidateCertificateChain(caCerts) << "\n";
+void JwtTokenHelper::ValidateTokenAgainstPublicCertificate(const std::string& token, const std::vector<std::string>& caCerts,
+    std::shared_ptr<X509CertificateChainValidator> validator) {
+    std::cout << "Cert Validation: " << validator->ValidateCertificateChain(caCerts) << "\n";
     // validate token against first certificate
     CheckValidity(token, caCerts[0]);
 }

@@ -36,25 +36,25 @@ int main(int argc, char *argv[])
     std::cout << "=========================================================\n\n";
  
     auto newTokenBuilder = JwtTokenHelper::GetModifiedTokenBuilder(jwtToken);
-    Runner::ModifyTokenAndValidateAgainstCustomPublicKey(newTokenBuilder);
+    Runner::SignTokenAndValidateAgainstCustomPublicKey(newTokenBuilder);
     std::cout << "=========================================================\n\n";
     
     Runner::ValidateWithInMemoryKeys(newTokenBuilder);
     std::cout << "=========================================================\n\n";
 
-    Runner::ModifyTokenAndValidateAgainstSelfSignedCertificate(newTokenBuilder);
+    Runner::SignTokenAndValidateAgainstSelfSignedCertificate(newTokenBuilder);
     std::cout << "=========================================================\n\n";
 
     Runner::ValidateWithInMemoryCert(newTokenBuilder);
     std::cout << "=========================================================\n\n";
 
-    Runner::ModifyTokenAndValidateAgainstRootCaSignedCertificate(newTokenBuilder);
+    Runner::SignTokenAndValidateAgainstRootCaSignedCertificate(newTokenBuilder);
     std::cout << "=========================================================\n\n";
 
     Runner::ValidateWithInMemoryRootCert(newTokenBuilder);
     std::cout << "=========================================================\n\n";
 
-    Runner::ModifyTokenAndValidateAgainstIntermediateCaSignedCertificate(newTokenBuilder);
+    Runner::SignTokenAndValidateAgainstIntermediateCaSignedCertificate(newTokenBuilder);
     std::cout << "=========================================================\n\n";
 
     Runner::ValidateWithInMemoryIntermediateCert(newTokenBuilder);

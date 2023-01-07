@@ -23,7 +23,7 @@ void Runner::ValidateWithInMemoryKeys(jwt::builder<jwt::traits::kazuho_picojson>
     JwtTokenHelper::ValidateTokenAgainstPublicKey(updatedToken, keyPairHelper->GetPublicKey());
 }
 
-void Runner::ModifyTokenAndValidateAgainstCustomPublicKey(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder)
+void Runner::SignTokenAndValidateAgainstCustomPublicKey(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder)
 {
     std::string updatedToken = JwtTokenHelper::SignToken(jwtTokenBuilder, FileIoUtils::getFileContents(TokenSignedWithCustomKeyPairParams.privateKeyFile));
     std::cout << "Updated token claims (checking with public key):\n";
@@ -43,22 +43,25 @@ void Runner::ValidateWithInMemoryCert(jwt::builder<jwt::traits::kazuho_picojson>
     std::vector<std::string> caCerts;
     caCerts.push_back(x509Cert->GetPublicCert());
     
+    std::shared_ptr<X509CertificateChainValidator> validator = std::make_shared<X509CertificateChainValidator>(x509Cert->GetPublicCert());
     std::string updatedToken = JwtTokenHelper::SignToken(jwtTokenBuilder, x509Cert->GetPrivateKey());
     std::cout << "Updated token claims (checking with in memory cert):\n";
     JwtTokenHelper::PrintTokenClaims(updatedToken);
-    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts);
+    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts, validator);
 }
 
-void Runner::ModifyTokenAndValidateAgainstSelfSignedCertificate(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder)
+void Runner::SignTokenAndValidateAgainstSelfSignedCertificate(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder)
 {
     std::vector<std::string> caCerts;
     caCerts.clear();
     for(const std::string& file : TokenSignedWithSelfSignedParams.caCertFiles)
         caCerts.push_back(FileIoUtils::getFileContents(file));
+    
+    std::shared_ptr<X509CertificateChainValidator> validator = std::make_shared<X509CertificateChainValidator>(caCerts.back());
     std::string updatedToken = JwtTokenHelper::SignToken(jwtTokenBuilder, FileIoUtils::getFileContents(TokenSignedWithSelfSignedParams.privateKeyFile));
     std::cout << "Updated token claims (checking with self signed cert):\n";
     JwtTokenHelper::PrintTokenClaims(updatedToken);
-    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts);
+    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts, validator);
 }
 
 void Runner::ValidateWithInMemoryRootCert(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder) {
@@ -80,23 +83,25 @@ void Runner::ValidateWithInMemoryRootCert(jwt::builder<jwt::traits::kazuho_picoj
     caCerts.push_back(leafCert->GetPublicCert());
     caCerts.push_back(rootCert->GetPublicCert());
     
+    std::shared_ptr<X509CertificateChainValidator> validator = std::make_shared<X509CertificateChainValidator>(rootCert->GetPublicCert());
     std::string updatedToken = JwtTokenHelper::SignToken(jwtTokenBuilder, leafCert->GetPrivateKey());
     std::cout << "Updated token claims (checking with in memory root cert):\n";
     JwtTokenHelper::PrintTokenClaims(updatedToken);
-    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts);
+    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts, validator);
 }
 
-void Runner::ModifyTokenAndValidateAgainstRootCaSignedCertificate(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder)
+void Runner::SignTokenAndValidateAgainstRootCaSignedCertificate(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder)
 {
     std::vector<std::string> caCerts;
     caCerts.clear();
     for(const std::string& file : TokenSignedWithRootCaParams.caCertFiles)
         caCerts.push_back(FileIoUtils::getFileContents(file));
     
+    std::shared_ptr<X509CertificateChainValidator> validator = std::make_shared<X509CertificateChainValidator>(caCerts.back());
     std::string updatedToken = JwtTokenHelper::SignToken(jwtTokenBuilder, FileIoUtils::getFileContents(TokenSignedWithRootCaParams.privateKeyFile));
     std::cout << "Updated token claims (checking with root -> leaf cert):\n";
     JwtTokenHelper::PrintTokenClaims(updatedToken);
-    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts);
+    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts, validator);
 }
 
 void Runner::ValidateWithInMemoryIntermediateCert(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder) {
@@ -126,21 +131,23 @@ void Runner::ValidateWithInMemoryIntermediateCert(jwt::builder<jwt::traits::kazu
     caCerts.push_back(intermediateCert->GetPublicCert());
     caCerts.push_back(rootCert->GetPublicCert());
     
+    std::shared_ptr<X509CertificateChainValidator> validator = std::make_shared<X509CertificateChainValidator>(rootCert->GetPublicCert());
     std::string updatedToken = JwtTokenHelper::SignToken(jwtTokenBuilder, leafCert->GetPrivateKey());
     std::cout << "Updated token claims (checking with in memory intermediate cert):\n";
     JwtTokenHelper::PrintTokenClaims(updatedToken);
-    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts);
+    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts, validator);
 }
 
-void Runner::ModifyTokenAndValidateAgainstIntermediateCaSignedCertificate(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder)
+void Runner::SignTokenAndValidateAgainstIntermediateCaSignedCertificate(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder)
 {
     std::vector<std::string> caCerts;
     caCerts.clear();
     for(const std::string& file : TokenSignedWithIntermediateCaParams.caCertFiles)
         caCerts.push_back(FileIoUtils::getFileContents(file));
     
+    std::shared_ptr<X509CertificateChainValidator> validator = std::make_shared<X509CertificateChainValidator>(caCerts.back());
     std::string updatedToken = JwtTokenHelper::SignToken(jwtTokenBuilder, FileIoUtils::getFileContents(TokenSignedWithIntermediateCaParams.privateKeyFile));
     std::cout << "Updated token claims (checking with root -> intermediate -> leaf certs):\n";
     JwtTokenHelper::PrintTokenClaims(updatedToken);
-    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts);
+    JwtTokenHelper::ValidateTokenAgainstPublicCertificate(updatedToken, caCerts, validator);
 }

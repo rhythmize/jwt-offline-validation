@@ -91,24 +91,45 @@ void X509Certificate::SignAsServerCert(std::shared_ptr<X509Certificate> signingC
 }
 
 void X509Certificate::PrintCertificateInfo() {
-    std::unique_ptr<BIO, decltype(&BIO_free)> bioConsole(BIO_new_fp(stdout, BIO_NOCLOSE), BIO_free); 
+    std::unique_ptr<BIO, decltype(&BIO_free)> bioConsole(BIO_new_fp(stdout, BIO_NOCLOSE), BIO_free);
+    if (bioConsole == NULL) {
+        throw new std::runtime_error("Cannot initialize BIO");
+    }
 
-    BIO_printf(bioConsole.get(), "Subject: ");
-    X509_NAME_print(bioConsole.get(), X509_get_subject_name(x509.get()), 0);
-    BIO_printf(bioConsole.get(), "\n");
+    if (BIO_printf(bioConsole.get(), "Subject: ") < 0) {
+        throw new std::runtime_error("Cannot write to console");
+    }
+    if (X509_NAME_print(bioConsole.get(), X509_get_subject_name(x509.get()), 0) != 1) {
+        throw new std::runtime_error("Cannot write to console");
+    }
+    if (BIO_printf(bioConsole.get(), "\n") < 0) {
+        throw new std::runtime_error("Cannot write to console");
+    }
  
-    BIO_printf(bioConsole.get(), "Issuer: ");
-    X509_NAME_print(bioConsole.get(), X509_get_issuer_name(x509.get()), 0);
-    BIO_printf(bioConsole.get(), "\n");
+    if (BIO_printf(bioConsole.get(), "Issuer: ") < 0) {
+        throw new std::runtime_error("Cannot write to console");
+    }
+    if (X509_NAME_print(bioConsole.get(), X509_get_issuer_name(x509.get()), 0) != 1) {
+        throw new std::runtime_error("Cannot write to console");
+    }
+    if (BIO_printf(bioConsole.get(), "\n") < 0) {
+        throw new std::runtime_error("Cannot write to console");
+    }
 
-    EVP_PKEY_print_public(bioConsole.get(), keyPair->GetKeyPair().get(), 0, NULL);
+    if (EVP_PKEY_print_public(bioConsole.get(), keyPair->GetKeyPair().get(), 0, NULL) != 1) {
+        throw new std::runtime_error("Cannot write to console");
+    }
 
     const ASN1_BIT_STRING *signature;
     const X509_ALGOR *alg;
     X509_get0_signature(&signature, &alg, x509.get());
 
-    X509_signature_print(bioConsole.get(), alg, signature);
-    BIO_printf(bioConsole.get(),"\n");
+    if (X509_signature_print(bioConsole.get(), alg, signature) != 1) {
+        throw new std::runtime_error("Cannot write to console");
+    }
+    if (BIO_printf(bioConsole.get(),"\n") < 0) {
+        throw new std::runtime_error("Cannot write to console");
+    }
 }
 
 void X509Certificate::DumpToFile() {
