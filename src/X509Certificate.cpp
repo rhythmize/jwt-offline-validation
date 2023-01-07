@@ -90,6 +90,27 @@ void X509Certificate::SignAsServerCert(std::shared_ptr<X509Certificate> signingC
     sign(signingCertificate);
 }
 
+void X509Certificate::PrintCertificateInfo() {
+    std::unique_ptr<BIO, decltype(&BIO_free)> bioConsole(BIO_new_fp(stdout, BIO_NOCLOSE), BIO_free); 
+
+    BIO_printf(bioConsole.get(), "Subject: ");
+    X509_NAME_print(bioConsole.get(), X509_get_subject_name(x509.get()), 0);
+    BIO_printf(bioConsole.get(), "\n");
+ 
+    BIO_printf(bioConsole.get(), "Issuer: ");
+    X509_NAME_print(bioConsole.get(), X509_get_issuer_name(x509.get()), 0);
+    BIO_printf(bioConsole.get(), "\n");
+
+    EVP_PKEY_print_public(bioConsole.get(), keyPair->GetKeyPair().get(), 0, NULL);
+
+    const ASN1_BIT_STRING *signature;
+    const X509_ALGOR *alg;
+    X509_get0_signature(&signature, &alg, x509.get());
+
+    X509_signature_print(bioConsole.get(), alg, signature);
+    BIO_printf(bioConsole.get(),"\n");
+}
+
 void X509Certificate::DumpToFile() {
     std::string keyFileName = certCname + "_private.pem";
     std::string certFileName = certCname + "_certificate.crt";

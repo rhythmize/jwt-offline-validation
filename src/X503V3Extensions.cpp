@@ -36,7 +36,7 @@ void X509V3Extensions::AddServerCertificateExtensions() {
     }, 0);
     addMultiValueExtension(NID_basic_constraints, std::map<std::string, std::string> {
         { "CA", "FALSE" }
-    }, 1);
+    }, 0);
     addMultiValueExtension(NID_key_usage, std::map<std::string, std::string> {
         { "digitalSignature", "" },
         { "keyEncipherment" , "" }
@@ -53,10 +53,10 @@ void X509V3Extensions::addStringExtension(int extensionNid, std::string value, i
         throw new std::runtime_error("Cannot find extension method for id: " + std::to_string(extensionNid));
     }
 
-    auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
-    std::unique_ptr<ASN1_VALUE, decltype(l1)> extensionValue(
+    auto deleter = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
+    std::unique_ptr<ASN1_VALUE, decltype(deleter)> extensionValue(
         reinterpret_cast<ASN1_VALUE *>(extensionMethod->s2i(extensionMethod, x509V3Ctx.get(), value.c_str())), 
-        l1
+        deleter
     );
     if (extensionValue == NULL) {
         throw new std::runtime_error("Cannot initialize extension value for id: " + std::to_string(extensionNid));
@@ -93,10 +93,10 @@ void X509V3Extensions::addMultiValueExtension(int extensionNid, std::map<std::st
         }
     }
     
-    auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
-    std::unique_ptr<ASN1_VALUE, decltype(l1)> extensionValue(
+    auto deleter = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
+    std::unique_ptr<ASN1_VALUE, decltype(deleter)> extensionValue(
         reinterpret_cast<ASN1_VALUE *>(extensionMethod->v2i(extensionMethod, x509V3Ctx.get(), confValueStack.get())), 
-        l1
+        deleter
     );
     if (extensionValue == NULL) {
         throw new std::runtime_error("Cannot initialize extension value for id: " + std::to_string(extensionNid));

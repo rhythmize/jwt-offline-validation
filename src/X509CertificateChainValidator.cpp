@@ -1,77 +1,40 @@
+#include <memory>
 #include <openssl/pem.h>
 #include <X509CertificateChainValidator.h>
 
 
-bool X509CertificateChainValidator::VerifyUsingX509Store(const std::vector<std::string>& caCertificates)
-{
-    X509_STORE_CTX* storeCtx = X509_STORE_CTX_new();
-    X509_STORE *trustStore = X509_STORE_new();
+bool X509CertificateChainValidator::ValidateCertificateChain(const std::vector<std::string>& caCertificates) {
+    std::unique_ptr<X509_STORE_CTX, decltype(&X509_STORE_CTX_free)> storeCtx(X509_STORE_CTX_new(), X509_STORE_CTX_free);
+    std::unique_ptr<X509_STORE, decltype(&X509_STORE_free)> trustStore(X509_STORE_new(), X509_STORE_free);
 
-    STACK_OF(X509) *chain = sk_X509_new_null();
-    BIO *b = BIO_new(BIO_s_mem());
-    X509* caCert;
-    std::string data;
+    auto deleter = [&](STACK_OF(X509) *ptr) { sk_X509_pop_free(ptr, X509_free); };
+    std::unique_ptr<STACK_OF(X509), decltype(deleter)> untrustedChain(sk_X509_new_null(), deleter);
 
-    for(size_t i=1; i < caCertificates.size() - 1; i++)
+    std::unique_ptr<BIO, decltype(&BIO_free)> bioCert(BIO_new(BIO_s_mem()), BIO_free);
+    
+    // create untrusted chain
+    for(size_t i=1; i < caCertificates.size(); i++)
     {
-        // create untrusted chain
-        BIO_puts(b, caCertificates[i].c_str());
-        caCert = PEM_read_bio_X509(b, NULL, NULL, NULL);
-        sk_X509_push(chain, caCert);
-        BIO_reset(b);
+        bioCert.reset(BIO_new(BIO_s_mem()));
+        BIO_puts(bioCert.get(), caCertificates[i].c_str());
+        sk_X509_push(untrustedChain.get(), PEM_read_bio_X509(bioCert.get(), NULL, NULL, NULL));
     }
     
-    // add trusted ca to store
-    BIO_puts(b, caCertificates[caCertificates.size() - 1].c_str());
-    caCert = PEM_read_bio_X509(b, NULL, NULL, NULL);
-    X509_STORE_add_cert(trustStore, caCert);
+    // add trusted ca to store 
+    // !!! SHOULD BE DONE OUTSIDE THIS METHOD INDEPENDENTLY !!!
+    bioCert.reset(BIO_new(BIO_s_mem()));
+    BIO_puts(bioCert.get(), caCertificates[caCertificates.size() - 1].c_str());
+
+    std::unique_ptr<X509, decltype(&X509_free)> trustedCert(PEM_read_bio_X509(bioCert.get(), NULL, NULL, NULL), X509_free);
+    X509_STORE_add_cert(trustStore.get(), trustedCert.get());
     
-    BIO_reset(b);
-    BIO_puts(b, caCertificates[0].c_str());
-    X509* cert = PEM_read_bio_X509(b, NULL, NULL, NULL);
+    bioCert.reset(BIO_new(BIO_s_mem()));
+    BIO_puts(bioCert.get(), caCertificates[0].c_str());
 
-    X509_STORE_CTX_init(storeCtx, trustStore, cert, chain);
+    std::unique_ptr<X509, decltype(&X509_free)> cert(PEM_read_bio_X509(bioCert.get(), NULL, NULL, NULL), X509_free);
 
-    int result = X509_verify_cert(storeCtx);
+    X509_STORE_CTX_init(storeCtx.get(), trustStore.get(), cert.get(), untrustedChain.get());
 
-    BIO_free(b);
-    X509_free(cert);
-    X509_free(caCert);
-    X509_STORE_CTX_free(storeCtx);
-    X509_STORE_free(trustStore);
-    sk_X509_pop_free(chain, X509_free);
+    int result = X509_verify_cert(storeCtx.get());
     return result;
-}
-
-void X509CertificateChainValidator::PrintCertificateInfo(const std::string& cert_pem)
-{
-    BIO *b = BIO_new(BIO_s_mem());
-    BIO_puts(b, cert_pem.c_str());
-    X509 * x509 = PEM_read_bio_X509(b, NULL, NULL, NULL);
- 
-    BIO *bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
- 
-    BIO_printf(bio_out, "Subject: ");
-    X509_NAME_print(bio_out, X509_get_subject_name(x509), 0);
-    BIO_printf(bio_out, "\n");
- 
-    BIO_printf(bio_out, "Issuer: ");
-    X509_NAME_print(bio_out, X509_get_issuer_name(x509), 0);
-    BIO_printf(bio_out, "\n");
- 
-    EVP_PKEY *pkey=X509_get_pubkey(x509);
-    EVP_PKEY_print_public(bio_out, pkey, 0, NULL);
-    EVP_PKEY_free(pkey);
-
-    const ASN1_BIT_STRING *signature;
-    const X509_ALGOR *alg;
-
-    X509_get0_signature(&signature, &alg, x509);
-
-    X509_signature_print(bio_out, alg, signature);
-    BIO_printf(bio_out,"\n");
- 
-    BIO_free(bio_out);
-    BIO_free(b);
-    X509_free(x509);
 }

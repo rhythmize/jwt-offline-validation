@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <openssl/x509v3.h>
+#include <vector>
 #include <RsaKeyPair.h>
 #include <X509V3Extensions.h>
 
@@ -15,6 +16,7 @@ public:
     void SignAsServerCert(std::shared_ptr<X509Certificate> signingCertificate);
     std::string GetPublicCert();
     std::string GetPrivateKey();
+    void PrintCertificateInfo();
     void DumpToFile();
 
 private:

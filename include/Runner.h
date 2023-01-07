@@ -3,20 +3,21 @@
 
 #include <string>
 #include <vector>
+#include <jwt-cpp/jwt.h>
 
 
 class Runner
 {
 public:
-    static void ValidateOriginalToken(std::string& jwtToken);
-    static void ValidateWithInMemoryKeys(std::string& jwtToken);
-    static void ModifyTokenAndValidateAgainstCustomPublicKey(std::string& jwtToken);
-    static void ValidateWithInMemoryCert(std::string& jwtToken);
-    static void ModifyTokenAndValidateAgainstSelfSignedCertificate(std::string& jwtToken);
-    static void ValidateWithInMemoryRootCert(std::string& jwtToken);
-    static void ModifyTokenAndValidateAgainstRootCaSignedCertificate(std::string& jwtToken);
-    static void ValidateWithInMemoryIntermediateCert(std::string& jwtToken);
-    static void ModifyTokenAndValidateAgainstIntermediateCaSignedCertificate(std::string& jwtToken);
+    static void ValidateOriginalToken(std::string& jwtToken, std::string& publicKey);
+    static void ValidateWithInMemoryKeys(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder);
+    static void ModifyTokenAndValidateAgainstCustomPublicKey(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder);
+    static void ValidateWithInMemoryCert(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder);
+    static void ModifyTokenAndValidateAgainstSelfSignedCertificate(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder);
+    static void ValidateWithInMemoryRootCert(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder);
+    static void ModifyTokenAndValidateAgainstRootCaSignedCertificate(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder);
+    static void ValidateWithInMemoryIntermediateCert(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder);
+    static void ModifyTokenAndValidateAgainstIntermediateCaSignedCertificate(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder);
 };
 
 #endif // _Runner_H_

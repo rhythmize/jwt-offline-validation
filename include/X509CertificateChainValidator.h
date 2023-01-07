@@ -7,8 +7,7 @@
 class X509CertificateChainValidator
 {
 public:
-    static bool VerifyUsingX509Store(const std::vector<std::string>& caCertificates);
-    static void PrintCertificateInfo(const std::string& certificate);
+    static bool ValidateCertificateChain(const std::vector<std::string>& caCertificates);
 };
 
 #endif // _X509CertificateChainValidator_H_
