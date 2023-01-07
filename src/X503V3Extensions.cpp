@@ -13,66 +13,84 @@ X509V3Extensions* X509V3Extensions::SetContext(std::shared_ptr<X509> issuer, std
 }
 
 void X509V3Extensions::AddCaCertificateExtensions() {
-    addSubjectKeyIdentifierExtension();
-    addAuthorityKeyIdentifierExtension(true);
-    addBasicConstraintsExtension(true);
-    addKeyUsageExtension(true);
+    addStringExtension(NID_subject_key_identifier, "hash", 0);
+    addMultiValueExtension(NID_authority_key_identifier, std::map<std::string, std::string> {
+        { "keyid", "always" },
+        { "issuer" , ""}
+    }, 0);
+    addMultiValueExtension(NID_basic_constraints, std::map<std::string, std::string> {
+        { "CA", "TRUE" }
+    }, 1);
+    addMultiValueExtension(NID_key_usage, std::map<std::string, std::string> {
+        { "digitalSignature", "" },
+        { "cRLSign" , "" },
+        { "keyCertSign", "" }
+    }, 1);
 }
 
 void X509V3Extensions::AddServerCertificateExtensions() {
-    addSubjectKeyIdentifierExtension();
-    addAuthorityKeyIdentifierExtension(false);
-    addBasicConstraintsExtension(false);
-    addKeyUsageExtension(false);
-    addNsCertTypeExtension();
-    addNsCommentExtension();
+    addStringExtension(NID_subject_key_identifier, "hash", 0);
+    addMultiValueExtension(NID_authority_key_identifier, std::map<std::string, std::string> {
+        { "keyid", "" },
+        { "issuer" , "always"}
+    }, 0);
+    addMultiValueExtension(NID_basic_constraints, std::map<std::string, std::string> {
+        { "CA", "FALSE" }
+    }, 1);
+    addMultiValueExtension(NID_key_usage, std::map<std::string, std::string> {
+        { "digitalSignature", "" },
+        { "keyEncipherment" , "" }
+    }, 1);
+    addMultiValueExtension(NID_netscape_cert_type, std::map<std::string, std::string> {
+        { "server", "" }
+    }, 0);
+    addStringExtension(NID_netscape_comment, "OpenSSL Generated Server Certificate", 0);
 }
 
-void X509V3Extensions::addSubjectKeyIdentifierExtension() {
-    const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_subject_key_identifier);
+void X509V3Extensions::addStringExtension(int extensionNid, std::string value, int critical) {
+    const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(extensionNid);
     if (extensionMethod == NULL) {
-        throw new std::runtime_error("Cannot find extension method for Subject Key Identifier");
+        throw new std::runtime_error("Cannot find extension method for id: " + std::to_string(extensionNid));
     }
 
     auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
     std::unique_ptr<ASN1_VALUE, decltype(l1)> extensionValue(
-        reinterpret_cast<ASN1_VALUE *>(extensionMethod->s2i(extensionMethod, x509V3Ctx.get(), "hash")), 
+        reinterpret_cast<ASN1_VALUE *>(extensionMethod->s2i(extensionMethod, x509V3Ctx.get(), value.c_str())), 
         l1
     );
     if (extensionValue == NULL) {
-        throw new std::runtime_error("Cannot initialize extension value for Subject Key Identifier");
+        throw new std::runtime_error("Cannot initialize extension value for id: " + std::to_string(extensionNid));
     }
 
     unsigned char *extensionFormatDer = NULL; 
     int extensionLength = ASN1_item_i2d(extensionValue.get(), &extensionFormatDer, ASN1_ITEM_ptr(extensionMethod->it));
     if (extensionLength <= 0) {
-        throw std::runtime_error("Cannot convert extension value to DER format");
+        throw std::runtime_error("Cannot convert extension value to DER format for id: " + std::to_string(extensionNid));
     }
 
-    addExtension(NID_subject_key_identifier, extensionFormatDer, extensionLength, 0);
+    addExtension(extensionNid, extensionFormatDer, extensionLength, critical);
 
     OPENSSL_free(extensionFormatDer);
 }
 
-void X509V3Extensions::addAuthorityKeyIdentifierExtension(bool isCaCert) {
-    const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_authority_key_identifier);
+void X509V3Extensions::addMultiValueExtension(int extensionNid, std::map<std::string, std::string> values, int critical) {
+    const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(extensionNid);
     if (extensionMethod == NULL) {
-        throw new std::runtime_error("Cannot find extension method for Authority Key Identifier");
+        throw new std::runtime_error("Cannot find extension method for id: " + std::to_string(extensionNid));
     }
     
     auto l = [&](STACK_OF(CONF_VALUE) *ptr) { sk_CONF_VALUE_pop_free(ptr, X509V3_conf_free); };
     std::unique_ptr<STACK_OF(CONF_VALUE), decltype(l)> confValueStack(sk_CONF_VALUE_new(NULL), l);
     if (confValueStack == NULL) {
-        throw std::runtime_error("Cannot parse CONF_VALUE for Authority Key Identifier");
+        throw std::runtime_error("Cannot parse CONF_VALUE for id: " + std::to_string(extensionNid));
     }
     
     STACK_OF(CONF_VALUE) *stackPtr = confValueStack.get();
-    if (X509V3_add_value("keyid", isCaCert ? "always" : NULL, &stackPtr) != 1) {
-        throw new std::runtime_error("Cannot add keyid:always Authority Key Identifier to extension");
-    }
-    
-    if (X509V3_add_value("issuer", isCaCert ? NULL : "always", &stackPtr) != 1) {
-        throw new std::runtime_error("Cannot add issuer  Authority Key Identifier to extension");
+    for (auto it = values.begin(); it != values.end(); ++it) {
+        const char *value = it->second.length() > 0 ? it->second.c_str() : NULL;
+        if (X509V3_add_value(it->first.c_str(), value, &stackPtr) != 1) {
+            throw new std::runtime_error("Cannot add " + it->first + " for id: " + std::to_string(extensionNid));
+        }
     }
     
     auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
@@ -81,164 +99,16 @@ void X509V3Extensions::addAuthorityKeyIdentifierExtension(bool isCaCert) {
         l1
     );
     if (extensionValue == NULL) {
-        throw new std::runtime_error("Cannot initialize extension value for Authority Key Identifier");
+        throw new std::runtime_error("Cannot initialize extension value for id: " + std::to_string(extensionNid));
     }
-    
-    unsigned char *extensionFormatDer = NULL; 
+
+    unsigned char *extensionFormatDer = NULL;
     int extensionLength = ASN1_item_i2d(extensionValue.get(), &extensionFormatDer, ASN1_ITEM_ptr(extensionMethod->it));
     if (extensionLength <= 0) {
-        throw std::runtime_error("Cannot convert extension value to DER format");
+        throw std::runtime_error("Cannot convert extension value to DER format for id: " + std::to_string(extensionNid));
     }
 
-    addExtension(NID_authority_key_identifier, extensionFormatDer, extensionLength, 0);
-
-    OPENSSL_free(extensionFormatDer);
-}
-
-void X509V3Extensions::addBasicConstraintsExtension(bool isCaCert) {
-    const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_basic_constraints);
-    if (extensionMethod == NULL) {
-        throw new std::runtime_error("Cannot find extension method for Basic Constraints");
-    }
-    
-    auto l = [&](STACK_OF(CONF_VALUE) *ptr) { sk_CONF_VALUE_pop_free(ptr, X509V3_conf_free); };
-    std::unique_ptr<STACK_OF(CONF_VALUE), decltype(l)> confValueStack(sk_CONF_VALUE_new(NULL), l);
-    if (confValueStack == NULL) {
-        throw std::runtime_error("Cannot parse CONF_VALUE for Basic Constraints");
-    }
-    
-    STACK_OF(CONF_VALUE) *stackPtr = confValueStack.get();
-    if (X509V3_add_value("CA", isCaCert ? "TRUE" : "FALSE", &stackPtr) != 1) {
-        throw new std::runtime_error("Cannot add CA:TRUE constraint to extension");
-    }
-
-    auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
-    std::unique_ptr<ASN1_VALUE, decltype(l1)> extensionValue(
-        reinterpret_cast<ASN1_VALUE *>(extensionMethod->v2i(extensionMethod, x509V3Ctx.get(), confValueStack.get())),
-        l1
-    );
-    if (extensionValue == NULL) {
-        throw new std::runtime_error("Cannot initialize extension value for Basic Constraints");
-    }
-    
-    unsigned char *extensionFormatDer = NULL; 
-    int extensionLength = ASN1_item_i2d(extensionValue.get(), &extensionFormatDer, ASN1_ITEM_ptr(extensionMethod->it));
-    if (extensionLength <= 0) {
-        throw std::runtime_error("Cannot convert extension value to DER format");
-    }
-
-    addExtension(NID_basic_constraints, extensionFormatDer, extensionLength, 1);
-
-    OPENSSL_free(extensionFormatDer);
-}
-
-void X509V3Extensions::addKeyUsageExtension(bool isCaCert) {
-    const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_key_usage);
-    if (extensionMethod == NULL) {
-        throw new std::runtime_error("Cannot find extension method for Key Usage");
-    }
-
-    auto l = [&](STACK_OF(CONF_VALUE) *ptr) { sk_CONF_VALUE_pop_free(ptr, X509V3_conf_free); };
-    std::unique_ptr<STACK_OF(CONF_VALUE), decltype(l)> confValueStack(sk_CONF_VALUE_new(NULL), l);
-    if (confValueStack == NULL) {
-        throw new std::runtime_error("Cannot initialize STACK_OF configuration values for extension");
-    }
-    
-    STACK_OF(CONF_VALUE) *stackPtr = confValueStack.get();
-    if (X509V3_add_value("digitalSignature", NULL, &stackPtr) != 1) {
-        throw new std::runtime_error("Cannot add digitalSignature Key usage to extension");
-    }
-    if (isCaCert) {
-        if (X509V3_add_value("cRLSign", NULL, &stackPtr) != 1) {
-            throw new std::runtime_error("Cannot add cRLSign Key usage to extension");
-        }
-        
-        if (X509V3_add_value("keyCertSign", NULL, &stackPtr) != 1) {
-            throw new std::runtime_error("Cannot add keyCertSign Key usage to extension");
-        }
-    } else {
-        if (X509V3_add_value("keyEncipherment", NULL, &stackPtr) != 1) {
-            throw new std::runtime_error("Cannot add keyEncipherment to extension");
-        }
-    }
-
-    auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
-    std::unique_ptr<ASN1_VALUE, decltype(l1)> extensionValue(
-        reinterpret_cast<ASN1_VALUE *>(extensionMethod->v2i(extensionMethod, x509V3Ctx.get(), confValueStack.get())),
-        l1
-    );
-    if (extensionValue == NULL) {
-        throw new std::runtime_error("Cannot initialize extension value for Key Usage");
-    }
-    
-    unsigned char *extensionFormatDer = NULL; 
-    int extensionLength = ASN1_item_i2d(extensionValue.get(), &extensionFormatDer, ASN1_ITEM_ptr(extensionMethod->it));
-    if (extensionLength <= 0) {
-        throw std::runtime_error("Cannot convert extension value to DER format");
-    }
-
-    addExtension(NID_key_usage, extensionFormatDer, extensionLength, 1);
-
-    OPENSSL_free(extensionFormatDer);
-}
-
-void X509V3Extensions::addNsCertTypeExtension() {
-    const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_netscape_cert_type);
-    if (extensionMethod == NULL) {
-        throw new std::runtime_error("Cannot find extension method for NsCertType");
-    }
-
-    auto l = [&](STACK_OF(CONF_VALUE) *ptr) { sk_CONF_VALUE_pop_free(ptr, X509V3_conf_free); };
-    std::unique_ptr<STACK_OF(CONF_VALUE), decltype(l)> confValueStack(sk_CONF_VALUE_new(NULL), l);
-    if (confValueStack == NULL) {
-        throw new std::runtime_error("Cannot initialize STACK_OF configuration values for extension");
-    }
-    
-    STACK_OF(CONF_VALUE) *stackPtr = confValueStack.get();
-    if (X509V3_add_value("server", NULL, &stackPtr) != 1) {
-        throw new std::runtime_error("Cannot add digitalSignature Key usage to extension");
-    }
-
-    auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
-    std::unique_ptr<ASN1_VALUE, decltype(l1)> extensionValue(
-        reinterpret_cast<ASN1_VALUE *>(extensionMethod->v2i(extensionMethod, x509V3Ctx.get(), confValueStack.get())), 
-        l1
-    );
-    if (extensionValue == NULL) {
-        throw new std::runtime_error("Cannot initialize extension value for nsCertType extension");
-    }
-    unsigned char *extensionFormatDer = NULL; 
-    int extensionLength = ASN1_item_i2d(extensionValue.get(), &extensionFormatDer, ASN1_ITEM_ptr(extensionMethod->it));
-    if (extensionLength <= 0) {
-        throw std::runtime_error("Cannot convert extension value to DER format");
-    }
-
-    addExtension(NID_netscape_cert_type, extensionFormatDer, extensionLength, 0);
-
-    OPENSSL_free(extensionFormatDer);
-}
-
-void X509V3Extensions::addNsCommentExtension() {
-    const X509V3_EXT_METHOD *extensionMethod = X509V3_EXT_get_nid(NID_netscape_comment);
-    if (extensionMethod == NULL) {
-        throw new std::runtime_error("Cannot find extension method for NsCertType");
-    }
-
-    auto l1 = [&](ASN1_VALUE *ptr) { ASN1_item_free(ptr, ASN1_ITEM_ptr(extensionMethod->it)); };
-    std::unique_ptr<ASN1_VALUE, decltype(l1)> extensionValue(
-        reinterpret_cast<ASN1_VALUE *>(extensionMethod->s2i(extensionMethod, x509V3Ctx.get(), "OpenSSL Generated Server Certificate")), 
-        l1
-    );
-    if (extensionValue == NULL) {
-        throw new std::runtime_error("Cannot initialize extension value for nsCertType extension");
-    }
-    unsigned char *extensionFormatDer = NULL; 
-    int extensionLength = ASN1_item_i2d(extensionValue.get(), &extensionFormatDer, ASN1_ITEM_ptr(extensionMethod->it));
-    if (extensionLength <= 0) {
-        throw std::runtime_error("Cannot convert extension value to DER format");
-    }
-
-    addExtension(NID_netscape_comment, extensionFormatDer, extensionLength, 0);
+    addExtension(extensionNid, extensionFormatDer, extensionLength, critical);
 
     OPENSSL_free(extensionFormatDer);
 }

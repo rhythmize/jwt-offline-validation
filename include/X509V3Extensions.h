@@ -1,6 +1,7 @@
 #ifndef _X509V3Extensions_H_
 #define _X509V3Extensions_H_
 
+#include <map>
 #include <memory>
 #include <openssl/x509v3.h>
 
@@ -14,12 +15,8 @@ public:
     void AddServerCertificateExtensions();
 
 private:
-    void addSubjectKeyIdentifierExtension();
-    void addAuthorityKeyIdentifierExtension(bool isCaCert);
-    void addBasicConstraintsExtension(bool isCaCert);
-    void addKeyUsageExtension(bool isCaCert);
-    void addNsCertTypeExtension();
-    void addNsCommentExtension();
+    void addStringExtension(int extensionNid, std::string value, int critical);
+    void addMultiValueExtension(int extensionNid, std::map<std::string, std::string> values, int critical);
     void addExtension(int extensionNid, unsigned char *ext_der, int ext_len, int critical);
     
     std::unique_ptr<X509V3_CTX> x509V3Ctx;
