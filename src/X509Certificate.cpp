@@ -3,9 +3,28 @@
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <X509Certificate.h>
+#include <jwt-cpp/jwt.h>
+
 
 X509Certificate::X509Certificate(std::string& cname) : certCname(cname), x509(X509_new(), X509_free), 
     x509Req(X509_REQ_new(), X509_REQ_free), keyPair(new RsaKeyPair(4096)), x509V3Extensions(new X509V3Extensions(x509)) { }
+
+std::unique_ptr<X509, decltype(&X509_free)> X509Certificate::GetX509FromDerString(std::string& derCert) {
+    std::unique_ptr<unsigned char[]> base64Decoded(new unsigned char[2000]());
+    
+    int decodedLen = EVP_DecodeBlock(base64Decoded.get(), reinterpret_cast<unsigned char *>(const_cast<char *>(derCert.data())), derCert.length());
+    if (decodedLen == -1) {
+        throw new std::runtime_error("Cannot decode base 64 DER certificate\n");
+    }
+
+    const unsigned char *decodedPtr = base64Decoded.get();
+    std::unique_ptr<X509, decltype(&X509_free)> x509(d2i_X509(NULL, &decodedPtr, decodedLen), X509_free);
+    if (x509 == NULL) {
+        throw new std::runtime_error("Cannot create X509 from DER certificate\n");
+    }
+    
+    return x509;
+}
 
 X509Certificate* X509Certificate::GenerateCertificateSigningRequest() {
     if (X509_REQ_set_pubkey(x509Req.get(), keyPair->GetKeyPair().get()) != 1) {
@@ -23,26 +42,23 @@ X509Certificate* X509Certificate::GenerateCertificateSigningRequest() {
     return this;
 }
 
-std::string X509Certificate::GetPublicCert() {
-    char *data;
-    std::string publicCert;
+std::string X509Certificate::GetPublicDerCert() {
+    std::unique_ptr<BIO, decltype(&BIO_free)> bioDer(BIO_new(BIO_s_mem()), BIO_free);
     
-    std::unique_ptr<BIO, decltype(&BIO_free)> bio(BIO_new(BIO_s_mem()), BIO_free);
-    if (bio == NULL) {
-        throw new std::runtime_error("Cannot initialize BIO");
-    }
+    unsigned char *derCert = NULL;
+    int derLen = i2d_X509(x509.get(), &derCert);
+    if (derLen < 0)
+        throw new std::runtime_error("Cannot convert X509 to DER format");
 
-    if (PEM_write_bio_X509(bio.get(), x509.get()) != 1) {
-        throw new std::runtime_error("Cannot write Private Key");
-    }
-
-    int len = BIO_get_mem_data(bio.get(), &data);
-    if (len <= 0) {
-        throw new std::runtime_error("Invalid data location in BIO");
-    }
-
-    publicCert.assign(data, len);
-    return publicCert;
+    // base64 encoding generate 4 bytes of output for every 3 bytes of input
+    int encodedLen = derLen % 3 ? ((derLen / 3) + 1) * 4 : derLen / 3 * 4 ;
+    
+    std::unique_ptr<unsigned char[]> base64Der(new unsigned char[encodedLen + 1]());
+    if (EVP_EncodeBlock(base64Der.get(), derCert, derLen) <= 0)
+        throw new std::runtime_error("Cannot encode DER certificate");
+    
+    OPENSSL_free(derCert);
+    return std::string((char *)base64Der.get());
 }
 
 std::string X509Certificate::GetPrivateKey() {

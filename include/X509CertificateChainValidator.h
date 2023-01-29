@@ -3,13 +3,13 @@
 
 #include <memory>
 #include <string>
-#include <vector>
+#include <picojson/picojson.h>
 
 class X509CertificateChainValidator
 {
 public:
     X509CertificateChainValidator(std::string trustedCertificate);
-    bool ValidateCertificateChain(const std::vector<std::string>& caCertificates);
+    bool ValidateCertificateChain(picojson::array caCertificates);
 
 private:
     std::unique_ptr<X509_STORE, decltype(&X509_STORE_free)> trustStore;

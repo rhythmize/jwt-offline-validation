@@ -1,4 +1,3 @@
-#include <jwt-cpp/jwt.h>
 #include <JwtTokenHelper.h>
 
 
@@ -20,17 +19,25 @@ jwt::builder<jwt::traits::kazuho_picojson> JwtTokenHelper::GetModifiedTokenBuild
 }
 
 void JwtTokenHelper::ValidateTokenAgainstPublicKey(const std::string& jwtToken, const std::string& publicKey) {
-    CheckValidity(jwtToken, publicKey);
+    CheckValidity(jwtToken, publicKey, NULL);
 }
 
-void JwtTokenHelper::ValidateTokenAgainstPublicCertificate(const std::string& token, const std::vector<std::string>& caCerts,
+void JwtTokenHelper::ValidateTokenAgainstPublicCertificate(const std::string& token, std::shared_ptr<X509CertificateChainValidator> validator) {
+    auto decodedForgedToken = jwt::decode(token);
+
+    auto derCaCerts = decodedForgedToken.get_header_claim("x5c").as_array();
+    std::cout << "Certificate Validation: " << validator->ValidateCertificateChain(derCaCerts) << "\n";
+
+    std::unique_ptr<X509, decltype(&X509_free)> x509(X509_new(), X509_free);
+
+    std::string publicDerCert = jwt::traits::kazuho_picojson::as_string(derCaCerts.front());
+    std::string pemCert = jwt::helper::convert_base64_der_to_pem(publicDerCert);
+
+    CheckValidity(token, pemCert, validator);
+}
+
+void JwtTokenHelper::CheckValidity(const std::string& jwtToken, const std::string& publicKey, 
     std::shared_ptr<X509CertificateChainValidator> validator) {
-    std::cout << "Cert Validation: " << validator->ValidateCertificateChain(caCerts) << "\n";
-    // validate token against first certificate
-    CheckValidity(token, caCerts[0]);
-}
-
-void JwtTokenHelper::CheckValidity(const std::string& jwtToken, const std::string& publicKey) {
     auto decodedForgedToken = jwt::decode(jwtToken);
     auto forgedVerifier = jwt::verify()
         .allow_algorithm(jwt::algorithm::rs256(publicKey, "", "", ""))
@@ -45,6 +52,14 @@ void JwtTokenHelper::CheckValidity(const std::string& jwtToken, const std::strin
 }
 
 std::string JwtTokenHelper::SignToken(const jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder, const std::string& privateKey) {
+    return jwtTokenBuilder.sign(jwt::algorithm::rs256("", privateKey, "", ""));
+}
+
+std::string JwtTokenHelper::SignToken(jwt::builder<jwt::traits::kazuho_picojson>& jwtTokenBuilder, 
+    const std::string& privateKey, std::vector<std::string> x5c) {
+    jwt::traits::kazuho_picojson::array_type x5cArray(x5c.begin(), x5c.end());
+    jwtTokenBuilder.set_header_claim("x5c", jwt::basic_claim<jwt::traits::kazuho_picojson>(x5cArray));
+    
     return jwtTokenBuilder.sign(jwt::algorithm::rs256("", privateKey, "", ""));
 }
 

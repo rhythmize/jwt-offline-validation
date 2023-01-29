@@ -1,5 +1,4 @@
 #include <iostream>
-#include <FileIoUtils.h>
 #include <JwtTokenHelper.h>
 #include <Runner.h>
 
@@ -36,25 +35,14 @@ int main(int argc, char *argv[])
     std::cout << "=========================================================\n\n";
  
     auto newTokenBuilder = JwtTokenHelper::GetModifiedTokenBuilder(jwtToken);
-    Runner::SignTokenAndValidateAgainstCustomPublicKey(newTokenBuilder);
-    std::cout << "=========================================================\n\n";
     
     Runner::ValidateWithInMemoryKeys(newTokenBuilder);
-    std::cout << "=========================================================\n\n";
-
-    Runner::SignTokenAndValidateAgainstSelfSignedCertificate(newTokenBuilder);
     std::cout << "=========================================================\n\n";
 
     Runner::ValidateWithInMemoryCert(newTokenBuilder);
     std::cout << "=========================================================\n\n";
 
-    Runner::SignTokenAndValidateAgainstRootCaSignedCertificate(newTokenBuilder);
-    std::cout << "=========================================================\n\n";
-
     Runner::ValidateWithInMemoryRootCert(newTokenBuilder);
-    std::cout << "=========================================================\n\n";
-
-    Runner::SignTokenAndValidateAgainstIntermediateCaSignedCertificate(newTokenBuilder);
     std::cout << "=========================================================\n\n";
 
     Runner::ValidateWithInMemoryIntermediateCert(newTokenBuilder);

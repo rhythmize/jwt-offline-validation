@@ -3,18 +3,19 @@
 
 #include <memory>
 #include <openssl/x509v3.h>
-#include <vector>
 #include <RsaKeyPair.h>
 #include <X509V3Extensions.h>
 
 class X509Certificate {
 public:
+    static std::unique_ptr<X509, decltype(&X509_free)> GetX509FromDerString(std::string& derCert);
+
     X509Certificate(std::string& cname);
     X509Certificate* GenerateCertificateSigningRequest();
     X509Certificate* ConfigureCertificateParameters();
     void SignAsCaCert(std::shared_ptr<X509Certificate> signingCertificate);
     void SignAsServerCert(std::shared_ptr<X509Certificate> signingCertificate);
-    std::string GetPublicCert();
+    std::string GetPublicDerCert();
     std::string GetPrivateKey();
     void PrintCertificateInfo();
     void DumpToFile();
