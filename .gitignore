@@ -1,4 +1,4 @@
 .vscode
 bin/
 obj/
-certs/
+scripts/certs/
