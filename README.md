@@ -2,9 +2,25 @@
 
 This repository is an attempt to explore the security aspect of JWT verification, especially while performing token validation on an offline device. 
 
-> OpenSSL is used for creating X509 Certificates and CSR and validating certificate chain.
+I have attempted to implement the certificate generation and JWT token verification via C/C++ APIs and bash scripts.
 
-> jwt-cpp is used for tampering and handling jwt tokens.
+## Disclaimer
+The implementations for managing certificates and validating JWT in this repository are for demonstration purpose only. These implementations are not intended for production systems.
+
+#### For C++ implementation
+* `OpenSSL C APIs` are used for creating RSA Key Pair, X509 Certificates & CSR and validating certificate chain. 
+* `jwt-cpp` is used for tampering and handling JWT tokens.
+
+#### For bash
+* `openssl command line utility` is used for creating Key Pair, Certificates and validating certificate chain.
+* `jq` is used for tampering and handling JWT tokens.
+
+
+# Dependencies
+For running `scripts/verify_jwt.sh`, install these dependencies
+```
+sudo apt install jq basez
+```
 
 ## Problem statement 
 To figure out a way to implement JWT verification for an offline system which receives the token and verification keys over an insecure channel. Thus there's always a possibility of tampering with token in an attempt to bypass authentication.
@@ -36,3 +52,17 @@ This repository tries to implement and validate the poc for below scenarios for 
 
 ## Conclusion
 Given the constrains, [Trust root certificate ahead of time](#trust-root-certificate-ahead-of-time) seems like the best option to appropriately implement JWT verification for an offline system so far.
+
+## Usage
+#### For C++ implementation
+```
+make clean
+make run
+```
+
+#### For bash
+```
+cd scripts/
+chmod +x verify_token.sh
+./verify_jwt.sh <number-of-intermediate-certificates-in-CA-chain>
+```
