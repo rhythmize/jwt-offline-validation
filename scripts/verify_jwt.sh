@@ -4,7 +4,7 @@ source ./token_helper.sh
 source ./certificate_helper.sh
 
 if [[ -z $1 ]] || ! [ $1 -eq $1 ]; then
-	echo -e "Usage:\tmodify_token.sh <number of intermediate CAs in certificate chain>"
+	echo -e "Usage:\tverify_jwt.sh <number of intermediate CAs in certificate chain>"
 	exit 1
 fi
 
@@ -32,8 +32,26 @@ hzLadkFnbaea6tr2Sv46UCsLrXVoDDn60M9eqAW1USCOQJD5ClUDmpZ097CznYbiQu9ErbJLTsB40L5W
 IQOghceGKK9EjwyN2MSs_9blxnrcgDOuGBjg04r7CsMy0rV3iTGpGBJRtB78nwov28InMlpReoTXSwHAEW1nuGccU1L2mVprkj33PMnjSBlhkljhH_1fvL\
 Xw-rE12fu9L5x6XhR_laoaTF-Ncb0bwtxIzixgaFDdMYzJpgEr03POtQZYWaCRiQvIZYHt51uFbvWKbFm1OXifSe0G-Un9HnMHLg"
 
+publicKey="-----BEGIN PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAt7RHafy7vKDaHmeP83f4
+W4npHfdwD9Y59pBbPxn3uX0vrTS8eBYkRI1tQqcsCfMa+KIz6aLoGPhL0IYFRsj0
+4882pv2MQTKdBWICGsTyzXws554RF/MLoGc5HFdqvhtXAsnSQRMk5/4sn4XcvRTt
+rt0klrKgfFQ0dpTTz9wTBYVmw5Ln4ccw5szHPeQHJOBpxY/0zoLqFxjVpgfOmEks
+LzX+uxMgUIj6A5iAW9St5ioHHIlrrU6PlcRKx/Z9FpD4rsXXH14FADq05x9RC7II
+GGeoAM6qNK8CiuCgnMaPbTw9Lpqs6oOT2/OzkLE+ksiZuxNfh50qBrhrl5JnWkTH
+rhkh5GsQmr3YEYIQxUi8H3Q7Q5qkxpmLp5I/MfUGGhfyeHqdMKdn0mPD9QQbVI9C
+PEOR/KnD7U/LiEktEgTcBLeuWz+T+tih9zK+Fvc5sgC8QmpSVRMyWPOu9O+yCopQ
++T5ggrCVidDbMaLAW2uFH3BgiNWbgGKSli71SVJr40kPkN7EVhZX8jeNtirGFhDX
+0V9n90qtcEIEIEXZnW/LSgImKWnaDjXlkCQajdXjBwXNli6lto+if1Wz9T0ueZfH
+rkKWk/mIeTQ6vg1RmgTcEcJgYLbUb+vHBWlUxxQ9tgDfjv5/4+M76j0HXy1q7d/u
+nuPEa5QVdyk85YJFN2THfqUCAwEAAQ==
+-----END PUBLIC KEY-----"
+
+
 echo -e "[+] Cleaning up old certs, if any ..."
 rm -rf certs/*
+# push public key to a file
+echo "$publicKey" > $(getDirectoryPath original_public_key.pem)
 
 echo -e "[+] Create new RSA keys and certificates ..."
 create_certificate_chain $intermediateCaCount
@@ -48,10 +66,14 @@ print_token $newToken
 
 echo -e "==========="
 
-echo -ne "[+] Validating certificate against certificate chain ...\n\t"
-validate_certificate "$(getDirectoryPath leaf)/certificate.crt" "$(getDirectoryPath leaf)/ca-chain.crt"
+echo -ne "[+] Validating original token against original public key ...\n\t"
+validate_token $originalToken "$(getDirectoryPath original_public_key.pem)"
 echo -ne "[+] Validating original token against new certificate ...\n\t"
 validate_token $originalToken "$(getDirectoryPath leaf)/certificate.crt"
+echo -ne "[+] Validating certificate against certificate chain ...\n\t"
+validate_certificate "$(getDirectoryPath leaf)/certificate.crt" "$(getDirectoryPath leaf)/ca-chain.crt"
+echo -ne "[+] Validating modified token against original public key ...\n\t"
+validate_token $newToken "$(getDirectoryPath original_public_key.pem)"
 echo -ne "[+] Validating modified token against new certificate ...\n\t"
 validate_token $newToken "$(getDirectoryPath leaf)/certificate.crt"
 echo -ne "[+] Validating modified token against new intermediate certificate ...\n\t"
