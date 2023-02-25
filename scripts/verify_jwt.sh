@@ -12,14 +12,6 @@ set -euo pipefail
 
 intermediateCaCount=$1
 
-getDirectoryPath() {
-	if [[ -z $1 ]]; then
-		echo -e "No directory name provided."
-		return 1
-	fi
-    echo "certs/${1}"
-}
-
 originalToken="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IkE3NHBUeDlIMDdMd1kyaGFrZVdPS0ZOZTNtaDhaNjZ3ZlFnQUhyME5\
 OLUEifQ.eyJpc3MiOiJodHRwczovL2lkLm9wZW5za2llcy5zaC8iLCJleHAiOjE2NDAwMjQzMjIsImlhdCI6MTY0MDAyMDcyMiwic3ViIjoiZzM3bFhpZk\
 FRb0JmVnVRWnhUM1ZKRmpYSU1nZGZYSU9wYTJMZFdCUUBjbGllbnRzIiwic2NvcGUiOiIiLCJ0eXAiOiJCZWFyZXIiLCJmbGlnaHRfcGxhbl9pZCI6IjEy\
@@ -49,7 +41,8 @@ nuPEa5QVdyk85YJFN2THfqUCAwEAAQ==
 
 
 echo -e "[+] Cleaning up old certs, if any ..."
-rm -rf certs/*
+rm -rf scenarios/*
+mkdir -p scenarios
 # push public key to a file
 echo "$publicKey" > $(getDirectoryPath original_public_key.pem)
 
@@ -58,6 +51,8 @@ create_certificate_chain $intermediateCaCount
 
 echo -e "[+] Modifying the original token ..."
 newToken=$(modify_token $originalToken $(getDirectoryPath leaf)/private.pem)
+# Write modified token to file
+echo -n $newToken > $(getDirectoryPath "updated_token")
 
 echo -ne "[+] Original Token: "
 print_token $originalToken
@@ -66,15 +61,15 @@ print_token $newToken
 
 echo -e "==========="
 
-echo -ne "[+] Validating original token against original public key ...\n\t"
+echo -e "\n[+] Validating original token against original public key ..."
 validate_token $originalToken "$(getDirectoryPath original_public_key.pem)"
-echo -ne "[+] Validating original token against new certificate ...\n\t"
+echo -e "\n[+] Validating original token against new certificate ..."
 validate_token $originalToken "$(getDirectoryPath leaf)/certificate.crt"
-echo -ne "[+] Validating certificate against certificate chain ...\n\t"
-validate_certificate "$(getDirectoryPath leaf)/certificate.crt" "$(getDirectoryPath leaf)/ca-chain.crt"
-echo -ne "[+] Validating modified token against original public key ...\n\t"
+echo -e "\n[+] Validating certificate against certificate chain ..."
+validate_certificate "$(getDirectoryPath leaf)/root_certificate.crt" "$(getDirectoryPath leaf)/ca-chain.crt" "$(getDirectoryPath leaf)/certificate.crt"
+echo -e "\n[+] Validating modified token against original public key ..."
 validate_token $newToken "$(getDirectoryPath original_public_key.pem)"
-echo -ne "[+] Validating modified token against new certificate ...\n\t"
+echo -e "\n[+] Validating modified token against new certificate ..."
 validate_token $newToken "$(getDirectoryPath leaf)/certificate.crt"
-echo -ne "[+] Validating modified token against new intermediate certificate ...\n\t"
+echo -e "\n[+] Validating modified token against new intermediate certificate ..."
 validate_token $newToken "$(getDirectoryPath intermediate1)/certificate.crt"

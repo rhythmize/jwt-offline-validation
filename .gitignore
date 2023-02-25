@@ -1,4 +1,4 @@
 .vscode
 bin/
 obj/
-scripts/certs/
+scripts/scenarios/

@@ -1,5 +1,14 @@
 #!/bin/bash
+
 opensslConfigFile=$(dirname $0)/openssl_ca.cnf
+
+getDirectoryPath() {
+	if [[ -z $1 ]]; then
+		echo -e "No directory name provided."
+		return 1
+	fi
+    echo "scenarios/${1}"
+}
 
 create_certificate() {
     local certCname=$1
@@ -53,14 +62,28 @@ create_certificate_chain() {
         certDirPath=$(getDirectoryPath intermediate${i})
         cat "${certDirPath}/certificate.crt" >> "${leafPath}/ca-chain.crt"
     done
-    # append self signed root CA into the chain
-    cat "$(getDirectoryPath $rootCname)/certificate.crt" >> "${leafPath}/ca-chain.crt"
+    # copy self signed root CA to leaf directory
+    cp "$(getDirectoryPath $rootCname)/certificate.crt" "${leafPath}/root_certificate.crt"
 }
 
 validate_certificate() {
-    local cert=$1
+    local trustedCert=$1
     local caChain=$2
+    local cert=$3
 
-    # verify X509 certificate against CA certificate chain
-    openssl verify -CAfile $caChain $cert
+    echo -ne "\033[0;34mCertificate chain validation: \033[0m"
+    if [ -s $caChain ];then
+    	# verify X509 certificate chain
+        openssl verify -CAfile $trustedCert -untrusted $caChain $cert &> /dev/null
+    else
+        # empty ca-chain
+        openssl verify -CAfile $trustedCert $cert &> /dev/null
+    fi
+
+    if [ $? -eq 0 ]; then
+        echo -e "\033[0;32mCertificate chain is valid\033[0m"
+
+    else
+        echo -e "\033[0;31mCertificate chain is invalid\033[0m"
+    fi
 }

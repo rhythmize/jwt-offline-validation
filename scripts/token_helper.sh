@@ -35,25 +35,29 @@ validate_token() {
 	pubkey=$(openssl x509 -pubkey -noout -in $publicKey 2>/dev/null)
 	if [ $? -ne 0 ]; then
 		# if unable to extract public, use as is 
-		echo -ne "pubkey fail using direct key\n\t"
 		pubkey=$(cat $publicKey)
 	fi
 
+	echo -ne "\033[0;34mJWT signature verification: \033[0m"
 	# verify header+payload signature using public key
-    openssl dgst -sha256 -verify <(echo "$pubkey") -signature <(echo -n $signature | base64url -d) <(echo -n $dataToVerify)
-    if [ $? -eq 0 ]; then
-        # check token for expiration
+    openssl dgst -sha256 -verify <(echo "$pubkey") -signature <(echo -n $signature | base64url -d) <(echo -n $dataToVerify) &> /dev/null
+	if [ $? -eq 0 ]; then
+		echo -e "\033[0;32mToken Verification Successful\033[0m"
+		# check token for expiration
         exp=$(jq -r -R '@base64d | fromjson | .exp ' <<< $payload)
-        if [ $(date +%s) -ge $exp ]; then
-            echo -e "\tToken is expired."
-            return
-        fi    
+		if [ "$exp" != "null" ]; then
+			if [ $(date +%s) -ge $exp ]; then
+				echo -e "\033[0;31m\tToken is expired.\033[0m"
+				return
+			fi
+		fi
     else
-        echo -e "\tToken signature not valid"
+		echo -e "\033[0;31mToken Verification Failed\033[0m"
+        echo -e "\033[0;31m\tToken signature is invalid\033[0m"
         return
     fi
-    set -e
-    echo -e "\tToken is valid"
+	set -e
+    echo -e "\033[0;32m\tToken is valid\033[0m"
 }
 
 modify_token() {
@@ -78,6 +82,5 @@ modify_token() {
 	newsign=$(tr -d = <<< $newsign)
 
 	newToken="$header.$updpayload.$newsign"
-	echo -n $newToken > $(getDirectoryPath "updated_token")
-	echo $newToken
+	echo -n $newToken
 }
