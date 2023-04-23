@@ -1,16 +1,59 @@
 #!/bin/bash
 
+rootCname="root"
+intermediateCnamePrefix="intermediate"
+leafCname="leaf"
+intermediateCaCount=-1
+
+parse_args() {
+	echo -ne "\033[0;31m"
+	local options=$(getopt -u -l "root-cname::,intermediate-cname-prefix::,leaf-cname::,intermediate-ca-count:,help" -o '' -- "$@")
+	echo -ne "\033[0m"
+
+	set -- $options
+	while true ; do
+		case "$1" in
+			--root-cname)
+				rootCname="$2"; shift 2;;
+			--intermediate-cname-prefix)
+				intermediateCnamePrefix=$2; shift 2;;
+			--leaf-cname)
+				leafCname=$2; shift 2;;
+			--intermediate-ca-count)
+				intermediateCaCount=$2;
+				shift 2;;
+			--help)
+				print_usage;
+				exit 0;;
+			--) 
+				shift; break ;;
+		esac
+	done
+}
+
+print_usage() {
+	echo -e "Usage:"
+	echo -e "    verify_jwt.sh --intermediate-ca-count=<intermediate-ca-count> [--root-cname=<root-cname>] [--intermediate-cname-prefix=<intermediate-cname-prefix>] [--leaf-cname=<leaf-cname>"]
+	echo -e "Options:"
+	echo -e "    --help \t\t\t\tprint this usage"
+	echo -e "    --intermediate-ca-count \t\tNumber of intermediate CAs in CA chain"
+	echo -e "    --root-cname \t\t\tcname for root certificate [default: root]"
+	echo -e "    --intermediate-cname-prefix \tcname prefix for intermediate certificate [default: intermediate]"
+	echo -e "    --leaf-cname \t\t\tcname for leaf certificate [default: leaf]"
+}
+
+parse_args $@
+
+if [ $intermediateCaCount -lt 0 ]; then
+	print_usage
+	echo -e '\n'
+	exit "Invalid number of --intermediate-ca-count. Must be greater than 0"
+fi
+
 source ./token_helper.sh
 source ./certificate_helper.sh
 
-if [[ -z $1 ]] || ! [ $1 -eq $1 ]; then
-	echo -e "Usage:\tverify_jwt.sh <number of intermediate CAs in certificate chain>"
-	exit 1
-fi
-
 set -euo pipefail
-
-intermediateCaCount=$1
 
 originalToken="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IkE3NHBUeDlIMDdMd1kyaGFrZVdPS0ZOZTNtaDhaNjZ3ZlFnQUhyME5\
 OLUEifQ.eyJpc3MiOiJodHRwczovL2lkLm9wZW5za2llcy5zaC8iLCJleHAiOjE2NDAwMjQzMjIsImlhdCI6MTY0MDAyMDcyMiwic3ViIjoiZzM3bFhpZk\
@@ -47,7 +90,7 @@ mkdir -p scenarios
 echo "$publicKey" > $(getDirectoryPath original_public_key.pem)
 
 echo -e "[+] Create new RSA keys and certificates ..."
-create_certificate_chain $intermediateCaCount
+create_certificate_chain $intermediateCaCount $rootCname $intermediateCnamePrefix $leafCname
 
 echo -e "[+] Modifying the original token ..."
 newToken=$(modify_token $originalToken $(getDirectoryPath leaf)/private.pem)
