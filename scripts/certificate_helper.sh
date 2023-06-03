@@ -15,6 +15,7 @@ create_certificate() {
     local certPath=$2
     local signerCname=$3
     local signerPath=$4
+    local opensslExtension=$5
 
     # prepare directory for certificate
     mkdir -p $certPath
@@ -25,7 +26,7 @@ create_certificate() {
     # Sign CSR and generate public X509 certificate
     # This should ideally happen on the CA side. Doing it here only for demonstration purposes
     echo -e "\t[*] Signing CSR for '${certCname}' using '${signerCname}' ..."
-    openssl x509 -req -days 1 -CA "${signerPath}/certificate.crt" -CAkey "${signerPath}/private.pem" -CAcreateserial -extfile $opensslConfigFile -extensions ca_cert -in "${certPath}/certificate.csr" -out "${certPath}/certificate.crt" 2>/dev/null
+    openssl x509 -req -days 1 -CA "${signerPath}/certificate.crt" -CAkey "${signerPath}/private.pem" -CAcreateserial -extfile $opensslConfigFile -extensions $opensslExtension -in "${certPath}/certificate.csr" -out "${certPath}/certificate.crt" 2>/dev/null
 }
 
 create_certificate_chain() {
@@ -48,14 +49,14 @@ create_certificate_chain() {
     do
         certPath=$(getDirectoryPath "intermediate${i}")
         certCname="${intermediateCnamePrefix}${i}"
-        create_certificate $certCname $certPath $signerCname $signerPath
+        create_certificate $certCname $certPath $signerCname $signerPath ca_cert
         signerCname=${certCname}
         signerPath=${certPath}
     done
 
     # create leaf certificate
     leafPath=$(getDirectoryPath leaf)
-    create_certificate $leafCname $leafPath $signerCname $signerPath
+    create_certificate $leafCname $leafPath $signerCname $signerPath server_cert
     
     # create CA chain of intermediate certificates
     echo -e "\t[*] Creating certificate chain in '${leafPath}' ..."
